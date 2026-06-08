@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔑 열쇠 모으기 게임</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ───── 설정 화면 ───── -->
+<div id="setup-screen" class="screen active">
+    <div class="setup-wrap">
+        <h1>🔑 열쇠 모으기 게임</h1>
+        <div class="setup-box">
+            <h2>팀 이름 설정</h2>
+            <div class="team-inputs">
+                <div class="team-row">
+                    <span class="dot" style="background:#ef4444"></span>
+                    <input id="team-name-0" type="text" value="팀 1" maxlength="8">
+                </div>
+                <div class="team-row">
+                    <span class="dot" style="background:#3b82f6"></span>
+                    <input id="team-name-1" type="text" value="팀 2" maxlength="8">
+                </div>
+                <div class="team-row">
+                    <span class="dot" style="background:#22c55e"></span>
+                    <input id="team-name-2" type="text" value="팀 3" maxlength="8">
+                </div>
+                <div class="team-row">
+                    <span class="dot" style="background:#f59e0b"></span>
+                    <input id="team-name-3" type="text" value="팀 4" maxlength="8">
+                </div>
+            </div>
+            <button onclick="startGame()">🎮 게임 시작</button>
+        </div>
+        <div class="key-badges">
+            <span class="badge normal">🔑 일반 ×35 (+1점)</span>
+            <span class="badge special">🗝️ 특수 ×5 (+3점)</span>
+            <span class="badge golden">✨ 황금 ×2 (+5점)</span>
+            <span class="badge ghost">👻 투명 ×2 (+10점)</span>
+        </div>
+    </div>
+</div>
+
+<!-- ───── 게임 화면 ───── -->
+<div id="game-screen" class="screen">
+    <div class="game-layout">
+
+        <!-- 좌측: 점수판 -->
+        <div class="left-panel">
+            <div class="panel-title">점수판</div>
+            <div id="score-list"></div>
+            <div class="panel-title" style="margin-top:0.75rem">남은 열쇠</div>
+            <div id="remaining-info"></div>
+            <div class="legend">
+                <div class="leg normal">🔑 일반 +1점</div>
+                <div class="leg special">🗝️ 특수 +3점</div>
+                <div class="leg golden">✨ 황금 +5점</div>
+                <div class="leg ghost">👻 투명 +10점 (비공개)</div>
+            </div>
+        </div>
+
+        <!-- 중앙: 보드 -->
+        <div class="center-panel">
+            <div class="game-header">
+                <div class="hbadge">라운드 <span id="current-round">1</span> / 15</div>
+                <div class="game-title">🔑 열쇠 모으기</div>
+                <div class="hbadge">선택 <span id="total-picks">0</span> / 60</div>
+            </div>
+            <div id="board" class="board"></div>
+        </div>
+
+        <!-- 우측: 턴 패널 -->
+        <div class="right-panel">
+
+            <!-- 순위 입력 -->
+            <div id="ranking-phase">
+                <div class="panel-title">⚡ 미니게임 순위</div>
+                <p class="sub-desc">이번 라운드 팀 순서를 설정하세요</p>
+                <div id="ranking-inputs"></div>
+                <button class="confirm-btn" onclick="confirmRanking()">✅ 순서 확정</button>
+                <button class="random-btn" onclick="randomRanking()">🎲 랜덤 순서</button>
+            </div>
+
+            <!-- 칸 선택 -->
+            <div id="selection-phase" style="display:none;flex-direction:column;gap:0.6rem">
+                <div class="panel-title">🎯 칸 선택</div>
+                <div id="turn-order-display"></div>
+                <div id="current-team-box"></div>
+                <div id="last-result" class="result-box"></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ───── 종료 화면 ───── -->
+<div id="end-screen" class="screen">
+    <div class="end-wrap">
+        <h1>🏁 게임 종료!</h1>
+        <div id="final-reveal" class="reveal-box"></div>
+        <div id="final-scores"></div>
+        <button onclick="resetGame()">🔄 다시 시작</button>
+    </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
