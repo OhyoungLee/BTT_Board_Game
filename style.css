@@ -120,6 +120,7 @@ body {
 .cell.hint.h3 { color: #facc15; }
 .cell.hint.h4 { color: #f97316; }
 .cell.hint.h5, .cell.hint.h6, .cell.hint.h7, .cell.hint.h8 { color: #ef4444; font-weight: 900; }
+.cell.hint.special-nearby { color: #991b1b !important; font-weight: 900; text-shadow: 0 0 6px #ef444466; }
 
 /* 보물 (게임 중) */
 .cell.key-treasure {
@@ -236,6 +237,13 @@ body {
 }
 .result-got  { color: #f59e0b; font-weight: 700; }
 .result-miss { color: #64748b; }
+.result-trap { color: #a855f7; font-weight: 700; }
+
+.skip-badge {
+    font-size: 0.65rem; font-weight: 800; color: #a855f7;
+    background: #3b0764; border-radius: 4px; padding: 0.1rem 0.4rem;
+    margin-top: 0.2rem; display: inline-block;
+}
 
 /* ════════════════════════════
    공개 화면
