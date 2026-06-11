@@ -69,6 +69,8 @@ body {
 .mode-letter { font-size: 1.8rem; font-weight: 900; line-height: 1; }
 .mode-name   { font-size: 0.9rem; font-weight: 800; }
 .mode-desc   { font-size: 0.72rem; color: inherit; opacity: 0.75; }
+.mode-btn-c  { border-color: #374151; }
+.mode-btn-c.mode-selected { border-color: #22d3ee; background: #0c2a33; color: #67e8f9; box-shadow: 0 0 18px #22d3ee33; }
 
 /* ════════════════════════════
    게임 화면

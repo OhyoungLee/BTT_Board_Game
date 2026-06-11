@@ -53,6 +53,30 @@ function selectMode(mode) {
     selectedMode = mode;
     document.getElementById('mode-a-btn').classList.toggle('mode-selected', mode === 'A');
     document.getElementById('mode-b-btn').classList.toggle('mode-selected', mode === 'B');
+    document.getElementById('mode-c-btn').classList.toggle('mode-selected', mode === 'C');
+}
+
+// ── C모드 자동 진행 헬퍼 ──
+function autoDelay(normal) { return G.mode === 'C' ? 150 : normal; }
+
+function scheduleAutoSelect() {
+    if (G.mode !== 'C') return;
+    setTimeout(() => {
+        if (G.phase !== 'selection' || G.locked) return;
+        const avail = [];
+        for (let i = 0; i < 100; i++) { if (!G.revealed[i]) avail.push(i); }
+        if (avail.length) selectCell(avail[Math.floor(Math.random() * avail.length)]);
+    }, 300);
+}
+
+function scheduleAutoReveal() {
+    if (G.mode !== 'C') return;
+    function tryAdvance() {
+        if (G.animating) { setTimeout(tryAdvance, 200); return; }
+        if (!document.getElementById('reveal-screen').classList.contains('active')) return;
+        nextRevealStep();
+    }
+    setTimeout(tryAdvance, 400);
 }
 
 // ──────────────────────────────────────────
@@ -296,6 +320,7 @@ function showRankingPhase() {
     document.getElementById('game-complete-phase').style.display = 'none';
     renderRankingInputs();
     renderBoard();
+    if (G.mode === 'C') setTimeout(() => { randomRanking(); confirmRanking(); }, 200);
 }
 
 function renderRankingInputs() {
@@ -369,6 +394,7 @@ function showGameComplete() {
     document.getElementById('selection-phase').style.display     = 'none';
     document.getElementById('ranking-phase').style.display       = 'none';
     document.getElementById('game-complete-phase').style.display = 'flex';
+    if (G.mode === 'C') setTimeout(startReveal, 400);
 }
 
 // ──────────────────────────────────────────
@@ -420,10 +446,11 @@ function showNextTeamOrSkip() {
         renderSkipTeam(teamIdx);
         document.getElementById('last-result').innerHTML =
             `<div class="result-trap">🪤 ${G.teams[teamIdx].name}: 함정으로 인해 이번 턴 패스!</div>`;
-        setTimeout(advanceTurn, 1800);
+        setTimeout(advanceTurn, autoDelay(1800));
     } else {
         renderCurrentTeam();
         renderBoard();
+        scheduleAutoSelect();
     }
 }
 
@@ -461,7 +488,7 @@ function selectCell(index) {
     const cellEl = document.querySelector(`.cell[data-index="${index}"]`);
     if (cellEl) cellEl.classList.add('pop');
 
-    setTimeout(advanceTurn, 2000);
+    setTimeout(advanceTurn, autoDelay(2000));
 }
 
 function advanceTurn() {
@@ -541,6 +568,7 @@ function renderRevealStep() {
     renderRevealBoard(destroyed, getRevealedTypes());
     renderRevealScores(scores);
     renderRevealDetail(stage, scores, destroyed);
+    scheduleAutoReveal();
 }
 
 function getRevealedTypesAtStep(step) {
@@ -653,7 +681,7 @@ function renderRevealDetail(stage, scores, destroyed) {
 
         // 4등부터 역순으로 공개 (1등이 마지막, 가장 극적)
         for (let rank = sorted.length - 1; rank >= 0; rank--) {
-            const delay = (sorted.length - 1 - rank) * 1100;
+            const delay = (sorted.length - 1 - rank) * autoDelay(1100);
             setTimeout(() => {
                 const t = sorted[rank];
                 const row = document.createElement('div');
@@ -758,6 +786,7 @@ function buildRouletteSequence(candidates, targets) {
 }
 
 function getFrameDelay(frame, total) {
+    if (G.mode === 'C') return 20;
     const p = frame / total;
     if (p < 0.45) return 60 + 40 * (p / 0.45);
     if (p < 0.75) return 100 + 200 * ((p - 0.45) / 0.3);
@@ -803,7 +832,7 @@ function playRouletteReveal(targetType, prevStepIdx, onComplete) {
             setTimeout(() => {
                 G.animating = false;
                 onComplete();
-            }, 1000);
+            }, autoDelay(1000));
             return;
         }
 
@@ -860,7 +889,7 @@ function playBombReveal(onComplete) {
                 }
             });
 
-            // 800ms 후 연기 효과
+            // 연기 효과
             setTimeout(() => {
                 targets.forEach(ti => {
                     getAdjacent(ti).forEach(ni => {
@@ -873,12 +902,12 @@ function playBombReveal(onComplete) {
                     });
                 });
 
-                // 2초 후 최종 상태로
+                // 최종 상태로
                 setTimeout(() => {
                     G.animating = false;
                     onComplete();
-                }, 2000);
-            }, 800);
+                }, autoDelay(2000));
+            }, autoDelay(800));
             return;
         }
 
