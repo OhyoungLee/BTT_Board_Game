@@ -757,10 +757,10 @@ function renderRevealTable() {
     document.getElementById('reveal-table-wrap').innerHTML = `
         <table class="reveal-big-table">
             <colgroup>
-                <col style="width:55px">
-                <col style="width:43px"><col style="width:43px">
-                <col style="width:43px"><col style="width:43px">
-                <col style="width:50px"><col style="width:68px">
+                <col style="width:62px">
+                <col style="width:52px"><col style="width:52px">
+                <col style="width:52px"><col style="width:52px">
+                <col style="width:58px"><col style="width:80px">
             </colgroup>
             <thead><tr><th>팀</th>${headerCells}</tr></thead>
             <tbody>${bodyRows}</tbody>

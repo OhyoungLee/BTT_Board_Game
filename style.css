@@ -403,7 +403,7 @@ body {
 }
 .reveal-layout {
     display: grid;
-    grid-template-columns: 1fr 400px;
+    grid-template-columns: 1fr 490px;
     width: 100vw; height: 100vh;
 }
 .reveal-board-area {
@@ -411,7 +411,7 @@ body {
     padding: 1rem; background: #0d0d1a;
 }
 #reveal-board {
-    width: min(calc(100vh - 40px), calc(100vw - 430px));
+    width: min(calc(100vh - 40px), calc(100vw - 520px));
     aspect-ratio: 1;
 }
 .reveal-panel {
@@ -498,17 +498,17 @@ body {
 /* ── 누적 점수 테이블 ── */
 .reveal-big-table {
     width: 100%; border-collapse: collapse;
-    font-size: 0.9rem; table-layout: fixed;
+    font-size: 1rem; table-layout: fixed;
 }
 .reveal-big-table th {
-    color: #475569; font-size: 0.72rem; font-weight: 800;
-    padding: 0.5rem 0.2rem; border-bottom: 2px solid #2a2a40;
+    color: #475569; font-size: 0.84rem; font-weight: 800;
+    padding: 0.5rem 0.15rem; border-bottom: 2px solid #2a2a40;
     text-align: center; position: sticky; top: 0; background: #12121f;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .reveal-big-table td {
-    padding: 0.6rem 0.2rem; border-bottom: 1px solid #1e1e30;
-    text-align: center; font-size: 0.9rem;
+    padding: 0.6rem 0.15rem; border-bottom: 1px solid #1e1e30;
+    text-align: center; font-size: 1rem;
 }
 .reveal-big-table tr:last-child td { border-bottom: none; }
 .tbl-team { text-align: left !important; font-weight: 900; padding-left: 0.4rem !important; }
