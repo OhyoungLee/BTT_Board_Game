@@ -643,12 +643,39 @@ function renderRevealDetail(stage, scores, destroyed) {
         const sorted = G.teams
             .map((t, i) => ({ ...t, score: scores[i] }))
             .sort((a, b) => b.score - a.score);
-        el.innerHTML = sorted.map((t, rank) => `
-            <div class="final-row" style="border-left-color:${t.color}">
-                ${medals[rank]} <span style="color:${t.color};font-weight:900">${t.name}</span>
-                <span style="float:right;font-size:1.3rem">${t.score}점</span>
-            </div>
-        `).join('');
+
+        el.innerHTML = '<div id="final-rows"></div>';
+        const wrap = document.getElementById('final-rows');
+
+        G.animating = true;
+        document.getElementById('reveal-next-btn').disabled = true;
+        document.getElementById('reveal-prev-btn').disabled = true;
+
+        // 4등부터 역순으로 공개 (1등이 마지막, 가장 극적)
+        for (let rank = sorted.length - 1; rank >= 0; rank--) {
+            const delay = (sorted.length - 1 - rank) * 1100;
+            setTimeout(() => {
+                const t = sorted[rank];
+                const row = document.createElement('div');
+                row.className = `final-row final-row-anim${rank === 0 ? ' final-first' : ''}`;
+                row.style.borderLeftColor = t.color;
+                row.style.setProperty('--team-color', t.color);
+                row.innerHTML = `
+                    <span class="final-medal">${medals[rank]}</span>
+                    <span style="color:${t.color};font-weight:900">${t.name}</span>
+                    <span class="final-score" style="color:${t.color}">${t.score}점</span>
+                `;
+                wrap.prepend(row);
+
+                if (rank === 0) {
+                    setTimeout(() => {
+                        G.animating = false;
+                        document.getElementById('reveal-next-btn').disabled = false;
+                        document.getElementById('reveal-prev-btn').disabled = (G.revealStep <= 0);
+                    }, 700);
+                }
+            }, delay);
+        }
         return;
     }
 

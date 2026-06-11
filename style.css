@@ -401,6 +401,25 @@ body {
     background: #1a1a2e; border-left: 4px solid;
     border-radius: 7px; padding: 0.75rem 0.9rem;
     font-size: 1.1rem; font-weight: 700;
+    display: flex; align-items: center; gap: 0.5rem;
+}
+.final-medal { font-size: 1.4rem; flex-shrink: 0; }
+.final-score { margin-left: auto; font-size: 1.3rem; font-weight: 900; }
+
+@keyframes finalRowIn {
+    from { opacity: 0; transform: translateX(-24px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes firstPlaceGlow {
+    0%   { box-shadow: 0 0 0 transparent; transform: scale(1); }
+    40%  { box-shadow: 0 0 32px var(--team-color, #f59e0b); transform: scale(1.04); }
+    100% { box-shadow: 0 0 16px color-mix(in srgb, var(--team-color, #f59e0b) 40%, transparent); transform: scale(1); }
+}
+.final-row-anim { animation: finalRowIn 0.4s ease-out forwards; }
+.final-first    {
+    background: #1e1a10;
+    animation: finalRowIn 0.4s ease-out forwards,
+               firstPlaceGlow 0.9s ease-out 0.35s forwards;
 }
 
 .reveal-btn-row {
