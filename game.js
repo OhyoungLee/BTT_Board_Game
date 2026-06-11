@@ -27,6 +27,33 @@ const REVEAL_STAGES = [
 ];
 
 let G = {};
+let selectedMode = 'B'; // 'A' = 고정, 'B' = 랜덤
+
+// ──────────────────────────────────────────
+// A모드 고정 보드 (항상 동일한 위치)
+// NORMAL×25 SPECIAL×5 GOLDEN×2 TRANSPARENT×2 TRAP×3 BOMB×2 = 39개
+// ──────────────────────────────────────────
+const FIXED_BOARD_A = (() => {
+    const board = new Array(100).fill(null);
+    const placements = {
+        NORMAL:      [3, 7, 12, 15, 18, 23, 26, 31, 34, 38, 42, 46, 51, 55, 58, 62, 67, 71, 74, 78, 83, 86, 91, 95, 98],
+        SPECIAL:     [9, 30, 53, 76, 97],
+        GOLDEN:      [44, 63],
+        TRANSPARENT: [22, 85],
+        TRAP:        [17, 49, 80],
+        BOMB:        [37, 68],
+    };
+    for (const [type, indices] of Object.entries(placements)) {
+        for (const i of indices) board[i] = type;
+    }
+    return board;
+})();
+
+function selectMode(mode) {
+    selectedMode = mode;
+    document.getElementById('mode-a-btn').classList.toggle('mode-selected', mode === 'A');
+    document.getElementById('mode-b-btn').classList.toggle('mode-selected', mode === 'B');
+}
 
 // ──────────────────────────────────────────
 // 유틸
@@ -150,7 +177,8 @@ function startGame() {
 
     G = {
         teams: names.map((name, i) => ({ name, color: TEAM_COLORS[i], treasureCount: 0 })),
-        board: generateBoard(),
+        board: selectedMode === 'A' ? [...FIXED_BOARD_A] : generateBoard(),
+        mode: selectedMode,
         revealed:      new Array(100).fill(false),
         revealedBy:    new Array(100).fill(null),
         hints:         new Array(100).fill(null),
@@ -168,6 +196,9 @@ function startGame() {
     renderScores();
     document.getElementById('current-round').textContent = G.round;
     document.getElementById('total-picks').textContent   = G.totalPicks;
+    const badge = document.getElementById('mode-badge');
+    badge.textContent  = G.mode === 'A' ? 'A 고정' : 'B 랜덤';
+    badge.className    = `mode-badge mode-${G.mode.toLowerCase()}`;
     showRankingPhase();
 }
 

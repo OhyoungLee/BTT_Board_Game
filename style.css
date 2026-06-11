@@ -43,6 +43,33 @@ body {
 .setup-box button:hover { transform: scale(1.05); box-shadow: 0 8px 30px #f59e0b55; }
 .setup-info { color: #475569; font-size: 0.85rem; line-height: 1.9; }
 
+/* 모드 선택 */
+.mode-box {
+    background: #1a1a2e; border: 1px solid #2a2a40;
+    border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem;
+}
+.mode-label {
+    font-size: 0.78rem; font-weight: 800; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #475569;
+    margin-bottom: 0.75rem; text-align: center;
+}
+.mode-btns { display: flex; gap: 0.75rem; }
+.mode-btn {
+    flex: 1; background: #12121f; border: 2px solid #2a2a40;
+    border-radius: 12px; padding: 0.85rem 0.5rem;
+    color: #64748b; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+    transition: border-color .2s, color .2s, background .2s, transform .15s;
+}
+.mode-btn:hover { border-color: #4f46e5; color: #c7d2fe; transform: scale(1.03); }
+.mode-btn.mode-selected {
+    border-color: #f59e0b; background: #2d1f00; color: #fde68a;
+    box-shadow: 0 0 18px #f59e0b33;
+}
+.mode-letter { font-size: 1.8rem; font-weight: 900; line-height: 1; }
+.mode-name   { font-size: 0.9rem; font-weight: 800; }
+.mode-desc   { font-size: 0.72rem; color: inherit; opacity: 0.75; }
+
 /* ════════════════════════════
    게임 화면
 ════════════════════════════ */
@@ -83,7 +110,13 @@ body {
     padding: 0.4rem 0.9rem; border-radius: 50px;
     font-size: 0.95rem; font-weight: 700;
 }
-.game-title { font-size: 1.3rem; font-weight: 900; }
+.game-title { font-size: 1.3rem; font-weight: 900; display: flex; align-items: center; gap: 0.5rem; }
+.mode-badge {
+    font-size: 0.72rem; font-weight: 800; padding: 0.2rem 0.6rem;
+    border-radius: 50px; border: 1px solid;
+}
+.mode-badge.mode-a { background: #1e1b4b; border-color: #818cf8; color: #a5b4fc; }
+.mode-badge.mode-b { background: #14532d; border-color: #22c55e; color: #86efac; }
 
 /* ════════════════════════════
    보드 공통

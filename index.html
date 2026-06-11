@@ -12,6 +12,23 @@
 <div id="setup-screen" class="screen active">
     <div class="setup-wrap">
         <h1>🎁 열쇠 모으기 게임</h1>
+        <!-- 모드 선택 -->
+        <div class="mode-box">
+            <div class="mode-label">게임 모드 선택</div>
+            <div class="mode-btns">
+                <button id="mode-a-btn" class="mode-btn" onclick="selectMode('A')">
+                    <span class="mode-letter">A</span>
+                    <span class="mode-name">고정 모드</span>
+                    <span class="mode-desc">보물 위치가 항상 동일</span>
+                </button>
+                <button id="mode-b-btn" class="mode-btn mode-selected" onclick="selectMode('B')">
+                    <span class="mode-letter">B</span>
+                    <span class="mode-name">랜덤 모드</span>
+                    <span class="mode-desc">매번 위치가 바뀜</span>
+                </button>
+            </div>
+        </div>
+
         <div class="setup-box">
             <h2>팀 이름 설정</h2>
             <div class="team-inputs">
@@ -63,7 +80,7 @@
         <div class="center-panel">
             <div class="game-header">
                 <div class="hbadge">라운드 <span id="current-round">1</span> / 15</div>
-                <div class="game-title">🎁 열쇠 모으기</div>
+                <div class="game-title">🎁 열쇠 모으기 <span id="mode-badge" class="mode-badge"></span></div>
                 <div class="hbadge">선택 <span id="total-picks">0</span> / 60</div>
             </div>
             <div id="board" class="board"></div>
