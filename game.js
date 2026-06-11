@@ -523,12 +523,19 @@ function nextRevealStep() {
     }
 }
 
+function prevRevealStep() {
+    if (G.animating || G.revealStep <= 0) return;
+    G.revealStep--;
+    renderRevealStep();
+}
+
 function renderRevealStep() {
     const stage  = REVEAL_STAGES[G.revealStep];
     const isLast = G.revealStep === REVEAL_STAGES.length - 1;
 
-    document.getElementById('reveal-stage-title').textContent = stage.label;
-    document.getElementById('reveal-next-btn').textContent    = isLast ? '🔄 다시 시작' : '다음 ▶';
+    document.getElementById('reveal-stage-title').textContent   = stage.label;
+    document.getElementById('reveal-next-btn').textContent      = isLast ? '🔄 다시 시작' : '다음 ▶';
+    document.getElementById('reveal-prev-btn').disabled         = G.revealStep <= 0;
 
     const { scores, destroyed } = calculateScores(G.revealStep);
     renderRevealBoard(destroyed, getRevealedTypes());
