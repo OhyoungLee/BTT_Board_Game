@@ -7,7 +7,7 @@ const KEY_CONFIG = {
     SPECIAL:     { emoji: '🗝️', name: '특수',  points: 3,   count: 5,  css: 'key-special'     },
     GOLDEN:      { emoji: '✨', name: '황금',  points: 5,   count: 2,  css: 'key-golden'      },
     TRANSPARENT: { emoji: '👻', name: '투명',  points: 10,  count: 2,  css: 'key-transparent' },
-    TRAP:        { emoji: '🪤', name: '함정',  points: 0,   count: 3,  css: 'key-trap'        },
+    TRAP:        { emoji: '🙈', name: '함정',  points: 0,   count: 3,  css: 'key-trap'        },
     BOMB:        { emoji: '💣', name: '폭탄',  points: -5,  count: 2,  css: 'key-bomb'        },
 };
 
@@ -288,7 +288,7 @@ function renderBoard() {
                 cell.textContent = h > 0 ? h : '';
             } else if (type === 'TRAP') {
                 cell.classList.add('key-trap');
-                cell.textContent = '🪤';
+                cell.textContent = '🙈';
             } else {
                 cell.classList.add('key-treasure');
                 cell.textContent = '🎁';
@@ -466,7 +466,7 @@ function renderSkipTeam(teamIdx) {
     box.style.boxShadow   = '0 0 22px #a855f744';
     box.innerHTML = `
         <div class="cur-name" style="color:#a855f7">${team.name}</div>
-        <div class="cur-label" style="color:#a855f7">🪤 함정 패스!</div>
+        <div class="cur-label" style="color:#a855f7">🙈 함정 패스!</div>
     `;
 }
 
@@ -479,7 +479,7 @@ function showNextTeamOrSkip() {
         G.locked = true;
         renderSkipTeam(teamIdx);
         document.getElementById('last-result').innerHTML =
-            `<div class="result-trap">🪤 ${G.teams[teamIdx].name}: 함정으로 인해 이번 턴 패스!</div>`;
+            `<div class="result-trap">🙈 ${G.teams[teamIdx].name}: 함정으로 인해 이번 턴 패스!</div>`;
         setTimeout(advanceTurn, 1800);
     } else {
         renderCurrentTeam();
@@ -504,7 +504,7 @@ function selectCell(index) {
 
     if (type === 'TRAP') {
         G.skippedTeams.add(teamIdx);
-        resultEl.innerHTML = `<div class="result-trap">🪤 ${team.name}: 함정 발동! 다음 턴 패스!</div>`;
+        resultEl.innerHTML = `<div class="result-trap">🙈 ${team.name}: 함정 발동! 다음 턴 패스!</div>`;
     } else if (type !== null) {
         team.treasureCount++;
         resultEl.innerHTML = `<div class="result-got">🎁 ${team.name}: 보물 획득!</div>`;
@@ -635,7 +635,7 @@ function renderRevealBoard(destroyed, revealedTypes) {
                 cell.textContent = h > 0 ? h : '';
             } else if (type === 'TRAP') {
                 cell.classList.add('key-trap');
-                cell.textContent = '🪤';
+                cell.textContent = '🙈';
             } else if (revealedTypes.has(type)) {
                 const cfg = KEY_CONFIG[type];
                 cell.classList.add(destroyed.has(i) ? 'key-destroyed' : cfg.css);
