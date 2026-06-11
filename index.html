@@ -23,11 +23,10 @@
             <button onclick="startGame()">🎮 게임 시작</button>
         </div>
         <div class="setup-info">
-            <p>100칸 보드에서 15라운드, 60번 선택!</p>
-            <p>🎁 보물 36개 (일반25·특수5·황금2·투명2·폭탄2)</p>
-            <p>🪤 함정 3개 — 즉시 공개, 다음 턴 패스</p>
-            <p>💣 폭탄 — 주변 열쇠 파괴 + -5점</p>
-            <p style="color:#475569;font-size:0.8rem">숫자 힌트가 진한 빨간색이면 고가 열쇠/폭탄이 근처에 있다는 신호!</p>
+            <p>100칸 보드 · 15라운드 · 60번 선택</p>
+            <p>🔑 일반 ×25(+1) · 🗝️ 특수 ×5(+3) · ✨ 황금 ×2(+5) · 👻 투명 ×2(+10)</p>
+            <p>🪤 함정 ×3(즉시공개·다음턴패스) · 💣 폭탄 ×2(주변파괴·-5점)</p>
+            <p style="color:#374151">숫자힌트 진한빨간색 = 주변에 특수/폭탄 있음!</p>
         </div>
     </div>
 </div>
@@ -36,11 +35,28 @@
 <div id="game-screen" class="screen">
     <div class="game-layout">
 
-        <!-- 좌측: 보물 현황 -->
+        <!-- 좌측: 보물 현황 + 범례 -->
         <div class="left-panel">
             <div class="panel-title">보물 현황</div>
             <div id="score-list"></div>
-            <div class="game-hint-note">🔒 종료 후 상세 공개</div>
+
+            <!-- 남은 보물 -->
+            <div class="remaining-box">
+                <div class="remaining-label">남은 보물</div>
+                <div class="remaining-val"><span id="remaining-count">36</span> / 36</div>
+                <div class="remaining-sub">발견 <span id="remaining-found">0</span>개</div>
+            </div>
+
+            <!-- 룰 범례 -->
+            <div class="game-legend">
+                <div class="panel-title" style="margin-bottom:0.3rem">아이템 정보</div>
+                <div class="legend-item"><span>🔑 일반</span><span>×25</span><span class="li-pts" style="color:#22c55e">+1점</span></div>
+                <div class="legend-item"><span>🗝️ 특수</span><span>×5</span><span class="li-pts" style="color:#818cf8">+3점</span></div>
+                <div class="legend-item"><span>✨ 황금</span><span>×2</span><span class="li-pts" style="color:#f59e0b">+5점</span></div>
+                <div class="legend-item"><span>👻 투명</span><span>×2</span><span class="li-pts" style="color:#06b6d4">+10점</span></div>
+                <div class="legend-item li-trap"><span>🪤 함정</span><span>×3</span><span class="li-pts">패스</span></div>
+                <div class="legend-item li-bomb"><span>💣 폭탄</span><span>×2</span><span class="li-pts">-5점</span></div>
+            </div>
         </div>
 
         <!-- 중앙: 보드 -->
@@ -73,6 +89,16 @@
                 <div id="last-result" class="result-box"></div>
             </div>
 
+            <!-- 게임 완료 -->
+            <div id="game-complete-phase" style="display:none;flex-direction:column;gap:0.8rem">
+                <div class="panel-title">🏆 게임 완료</div>
+                <div class="game-complete-msg">
+                    모든 팀이 선택을 완료했습니다!<br>
+                    준비되면 결과를 공개하세요.
+                </div>
+                <button class="complete-reveal-btn" onclick="startReveal()">🎁 결과 공개하기!</button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -80,20 +106,15 @@
 <!-- ───── 공개 화면 ───── -->
 <div id="reveal-screen" class="screen">
     <div class="reveal-layout">
-
-        <!-- 보드 -->
         <div class="reveal-board-area">
             <div id="reveal-board" class="board"></div>
         </div>
-
-        <!-- 공개 패널 -->
         <div class="reveal-panel">
             <div id="reveal-stage-title" class="reveal-title"></div>
             <div id="reveal-scores"></div>
             <div id="reveal-detail" class="reveal-detail"></div>
             <button id="reveal-next-btn" class="reveal-next-btn" onclick="nextRevealStep()">다음 ▶</button>
         </div>
-
     </div>
 </div>
 

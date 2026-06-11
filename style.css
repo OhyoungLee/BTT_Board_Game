@@ -41,14 +41,14 @@ body {
     cursor: pointer; transition: transform .2s, box-shadow .2s;
 }
 .setup-box button:hover { transform: scale(1.05); box-shadow: 0 8px 30px #f59e0b55; }
-.setup-info { color: #475569; font-size: 0.85rem; line-height: 1.8; }
+.setup-info { color: #475569; font-size: 0.85rem; line-height: 1.9; }
 
 /* ════════════════════════════
    게임 화면
 ════════════════════════════ */
 #game-screen.active {
     display: grid;
-    grid-template-columns: 200px 1fr 260px;
+    grid-template-columns: 210px 1fr 260px;
     grid-template-rows: 100vh;
     align-items: stretch;
 }
@@ -60,7 +60,7 @@ body {
     overflow-y: auto;
 }
 .left-panel { border-right: 1px solid #1e1e30; }
-.right-panel { border-left: 1px solid #1e1e30; }
+.right-panel { border-left:  1px solid #1e1e30; }
 
 .center-panel {
     display: flex; flex-direction: column;
@@ -92,7 +92,7 @@ body {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
     gap: 3px;
-    width: min(calc(100vh - 120px), calc(100vw - 500px));
+    width: min(calc(100vh - 120px), calc(100vw - 510px));
     aspect-ratio: 1;
 }
 
@@ -112,7 +112,7 @@ body {
 }
 .cell.unrevealed { color: #1e1e30; }
 
-/* 힌트 셀 */
+/* 힌트 */
 .cell.hint { background: #111827; cursor: default; font-size: clamp(0.55rem, 1vw, 0.85rem); }
 .cell.hint.h0 { color: #1f2937; }
 .cell.hint.h1 { color: #4ade80; }
@@ -122,7 +122,7 @@ body {
 .cell.hint.h5, .cell.hint.h6, .cell.hint.h7, .cell.hint.h8 { color: #ef4444; font-weight: 900; }
 .cell.hint.special-nearby { color: #991b1b !important; font-weight: 900; text-shadow: 0 0 6px #ef444466; }
 
-/* 보물 (게임 중) */
+/* 보물 (🎁) */
 .cell.key-treasure {
     background: #2d1f00; border-color: #d97706;
     font-size: clamp(0.7rem, 1.3vw, 1.1rem);
@@ -140,7 +140,24 @@ body {
     font-size: clamp(0.7rem, 1.3vw, 1.1rem); text-decoration: line-through;
     filter: grayscale(1);
 }
+.cell.smoke-cell {
+    background: #1e1e30; border-color: #6b7280;
+    font-size: clamp(0.7rem, 1.3vw, 1.1rem);
+    animation: smokeAnim 0.6s ease-in-out infinite alternate;
+}
+@keyframes smokeAnim {
+    from { opacity: 0.5; transform: scale(0.9); }
+    to   { opacity: 1;   transform: scale(1.05); }
+}
 
+/* 팀 호버 깜빡임 */
+@keyframes teamBlink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(1.12); box-shadow: 0 0 14px var(--team-color, #fff); }
+}
+.cell.team-blink { animation: teamBlink 0.7s ease-in-out infinite; z-index: 2; }
+
+/* 셀 애니메이션 */
 @keyframes pop {
     0%   { transform: scale(0.5); opacity: 0; }
     70%  { transform: scale(1.15); }
@@ -148,12 +165,20 @@ body {
 }
 .cell.pop { animation: pop .35s ease-out forwards; }
 
-@keyframes boom {
-    0%   { transform: scale(1); }
-    30%  { transform: scale(1.3); background: #ef4444; }
-    100% { transform: scale(1); }
+/* 룰렛 효과 */
+@keyframes roulFlash {
+    0%, 100% { background: #2d1f00; border-color: #d97706; }
+    50%       { background: #f59e0b; border-color: #fff; box-shadow: 0 0 16px #f59e0b; color: #000; }
 }
-.cell.boom { animation: boom .5s ease-out forwards; }
+.cell.roulette-flash { animation: roulFlash 0.25s ease-in-out infinite; z-index: 3; }
+
+@keyframes roulLand {
+    0%   { transform: scale(1);    box-shadow: 0 0 0 transparent; }
+    30%  { transform: scale(1.35); box-shadow: 0 0 30px #f59e0b; }
+    60%  { transform: scale(0.92); }
+    100% { transform: scale(1.1);  box-shadow: 0 0 20px #f59e0b88; }
+}
+.cell.roulette-land { animation: roulLand 0.7s ease-out forwards; z-index: 4; }
 
 /* ════════════════════════════
    점수판 (게임 중)
@@ -161,24 +186,49 @@ body {
 .score-card {
     background: #1a1a2e; border-radius: 8px;
     padding: 0.6rem 0.75rem; border-left: 3px solid transparent;
-    transition: box-shadow .3s;
+    transition: box-shadow .3s; cursor: default;
 }
 .score-card.active-team { box-shadow: 0 0 14px #ffffff22; }
 .score-name    { font-size: 0.9rem; font-weight: 800; margin-bottom: 0.2rem; }
 .score-treasure { font-size: 1.3rem; font-weight: 900; }
 .score-treasure span { font-size: 1.6rem; }
 
-.game-hint-note {
-    margin-top: auto; font-size: 0.72rem; color: #2a2a40;
-    text-align: center; padding: 0.5rem;
-    border: 1px solid #1e1e30; border-radius: 6px;
+.skip-badge {
+    font-size: 0.65rem; font-weight: 800; color: #a855f7;
+    background: #3b0764; border-radius: 4px; padding: 0.1rem 0.4rem;
+    margin-top: 0.2rem; display: inline-block;
 }
+
+/* 남은 보물 표시 */
+.remaining-box {
+    background: #1a1a2e; border-radius: 8px;
+    padding: 0.55rem 0.75rem; border: 1px solid #2a2a40;
+    text-align: center; margin-top: 0.25rem;
+}
+.remaining-label { font-size: 0.68rem; color: #475569; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.remaining-val   { font-size: 1.4rem; font-weight: 900; color: #f59e0b; line-height: 1.2; }
+.remaining-sub   { font-size: 0.7rem; color: #64748b; }
+
+/* 룰 범례 */
+.game-legend {
+    margin-top: auto;
+    background: #12121f; border-top: 1px solid #1e1e30;
+    padding-top: 0.5rem;
+    display: flex; flex-direction: column; gap: 0.25rem;
+}
+.legend-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #1a1a2e; border-radius: 6px;
+    padding: 0.28rem 0.6rem; font-size: 0.72rem;
+}
+.legend-item .li-pts { font-weight: 800; }
+.legend-item.li-trap { color: #a855f7; }
+.legend-item.li-bomb { color: #ef4444; }
 
 /* ════════════════════════════
    순위 입력
 ════════════════════════════ */
 .sub-desc { font-size: 0.78rem; color: #475569; }
-
 #ranking-inputs { display: flex; flex-direction: column; gap: 0.45rem; margin: 0.5rem 0; }
 .ranking-row { display: flex; align-items: center; gap: 0.5rem; }
 .rank-label { width: 52px; font-size: 0.82rem; font-weight: 800; flex-shrink: 0; }
@@ -199,7 +249,6 @@ body {
     cursor: pointer; transition: transform .2s; margin-top: 1.5rem;
 }
 .confirm-btn:hover { transform: scale(1.02); }
-
 .random-btn {
     width: 100%; background: linear-gradient(135deg, #7c3aed, #4f46e5);
     color: #fff; border: none; border-radius: 8px;
@@ -239,10 +288,23 @@ body {
 .result-miss { color: #64748b; }
 .result-trap { color: #a855f7; font-weight: 700; }
 
-.skip-badge {
-    font-size: 0.65rem; font-weight: 800; color: #a855f7;
-    background: #3b0764; border-radius: 4px; padding: 0.1rem 0.4rem;
-    margin-top: 0.2rem; display: inline-block;
+/* 게임 완료 버튼 */
+.game-complete-msg {
+    text-align: center; font-size: 0.95rem; color: #94a3b8;
+    line-height: 1.6; padding: 0.5rem;
+}
+.complete-reveal-btn {
+    width: 100%; background: linear-gradient(135deg, #f59e0b, #ef4444);
+    color: #fff; border: none; border-radius: 10px;
+    padding: 1rem; font-size: 1.1rem; font-weight: 900;
+    cursor: pointer; transition: transform .2s, box-shadow .2s;
+    margin-top: 0.5rem;
+    animation: btnPulse 1.5s ease-in-out infinite;
+}
+.complete-reveal-btn:hover { transform: scale(1.04); box-shadow: 0 0 30px #f59e0b55; }
+@keyframes btnPulse {
+    0%, 100% { box-shadow: 0 0 10px #f59e0b44; }
+    50%       { box-shadow: 0 0 28px #f59e0b99; }
 }
 
 /* ════════════════════════════
@@ -253,73 +315,66 @@ body {
 }
 .reveal-layout {
     display: grid;
-    grid-template-columns: 1fr 360px;
+    grid-template-columns: 1fr 400px;
     width: 100vw; height: 100vh;
-    gap: 0;
 }
 .reveal-board-area {
     display: flex; align-items: center; justify-content: center;
     padding: 1rem; background: #0d0d1a;
 }
 #reveal-board {
-    width: min(calc(100vh - 40px), calc(100vw - 390px));
+    width: min(calc(100vh - 40px), calc(100vw - 430px));
     aspect-ratio: 1;
 }
 .reveal-panel {
     background: #12121f; border-left: 1px solid #1e1e30;
-    padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;
+    padding: 1.5rem; display: flex; flex-direction: column; gap: 1.1rem;
     overflow-y: auto;
 }
 
 .reveal-title {
-    font-size: 1.3rem; font-weight: 900;
+    font-size: 1.6rem; font-weight: 900;
     padding-bottom: 0.75rem; border-bottom: 1px solid #1e1e30;
     text-align: center;
 }
 
-/* 점수 테이블 */
-.score-table {
-    width: 100%; border-collapse: collapse; font-size: 0.9rem;
-}
+/* 공개 점수 테이블 */
+.score-table { width: 100%; border-collapse: collapse; font-size: 1.05rem; }
 .score-table th {
-    color: #475569; font-size: 0.72rem; font-weight: 800;
+    color: #475569; font-size: 0.82rem; font-weight: 800;
     letter-spacing: 1px; text-transform: uppercase;
-    padding: 0.4rem 0.5rem; border-bottom: 1px solid #1e1e30;
-    text-align: left;
+    padding: 0.5rem 0.5rem; border-bottom: 1px solid #1e1e30; text-align: left;
 }
-.score-table td {
-    padding: 0.5rem 0.5rem; border-bottom: 1px solid #1a1a2e;
-}
+.score-table td   { padding: 0.6rem 0.5rem; border-bottom: 1px solid #1a1a2e; }
 .score-table tr:last-child td { border-bottom: none; }
-.score-val { font-size: 1.1rem; font-weight: 900; text-align: right; }
+.score-val { font-size: 1.25rem; font-weight: 900; text-align: right; }
 
 /* 공개 상세 */
 .reveal-detail {
-    flex: 1; display: flex; flex-direction: column; gap: 0.5rem;
-    font-size: 0.88rem;
+    flex: 1; display: flex; flex-direction: column; gap: 0.55rem;
 }
-.reveal-detail p { color: #64748b; }
+.reveal-detail p { color: #64748b; font-size: 0.95rem; }
 
 .detail-row {
     background: #1a1a2e; border-radius: 7px;
-    padding: 0.5rem 0.75rem; font-size: 0.88rem; line-height: 1.5;
+    padding: 0.6rem 0.85rem; font-size: 1rem; line-height: 1.6;
 }
 .detail-note {
     background: #450a0a; border-radius: 7px;
-    padding: 0.5rem 0.75rem; font-size: 0.85rem; color: #fca5a5;
+    padding: 0.55rem 0.85rem; font-size: 0.95rem; color: #fca5a5;
     margin-top: 0.25rem;
 }
-
 .final-row {
     background: #1a1a2e; border-left: 4px solid;
-    border-radius: 7px; padding: 0.65rem 0.75rem;
-    font-size: 1rem; font-weight: 700;
+    border-radius: 7px; padding: 0.75rem 0.9rem;
+    font-size: 1.1rem; font-weight: 700;
 }
 
 .reveal-next-btn {
     width: 100%; background: linear-gradient(135deg, #f59e0b, #ef4444);
     color: #fff; border: none; border-radius: 8px;
-    padding: 0.85rem; font-size: 1rem; font-weight: 800;
+    padding: 1rem; font-size: 1.1rem; font-weight: 800;
     cursor: pointer; transition: transform .2s; margin-top: auto;
 }
-.reveal-next-btn:hover { transform: scale(1.02); }
+.reveal-next-btn:hover  { transform: scale(1.02); }
+.reveal-next-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }

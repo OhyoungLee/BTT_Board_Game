@@ -11,20 +11,19 @@ const KEY_CONFIG = {
     BOMB:        { emoji: '💣', name: '폭탄',  points: -5,  count: 2,  css: 'key-bomb'        },
 };
 
-// 보물로 취급하는 타입 (함정은 보물 아님)
 const TREASURE_TYPES = new Set(['NORMAL', 'SPECIAL', 'GOLDEN', 'TRANSPARENT', 'BOMB']);
+const SPECIAL_TYPES  = new Set(['SPECIAL', 'GOLDEN', 'TRANSPARENT', 'BOMB']);
+const TOTAL_TREASURES = Object.entries(KEY_CONFIG)
+    .filter(([t]) => TREASURE_TYPES.has(t))
+    .reduce((s, [, c]) => s + c.count, 0);
 
-// 근처에 있으면 힌트를 진한 빨간색으로 바꾸는 타입
-const SPECIAL_TYPES = new Set(['SPECIAL', 'GOLDEN', 'TRANSPARENT', 'BOMB']);
-
-// 공개 단계
 const REVEAL_STAGES = [
-    { id: 'BASE',        label: '📦 보물 개수 공개',   revealType: null          },
-    { id: 'SPECIAL',     label: '🗝️ 특수 열쇠 공개',   revealType: 'SPECIAL'     },
-    { id: 'GOLDEN',      label: '✨ 황금 열쇠 공개',    revealType: 'GOLDEN'      },
-    { id: 'TRANSPARENT', label: '👻 투명 열쇠 공개',    revealType: 'TRANSPARENT' },
-    { id: 'BOMB',        label: '💣 폭탄 공개',          revealType: 'BOMB'        },
-    { id: 'FINAL',       label: '🏁 최종 결과',          revealType: 'NORMAL'      },
+    { id: 'BASE',        label: '📦 보물 개수 공개',  revealType: null          },
+    { id: 'SPECIAL',     label: '🗝️ 특수 열쇠 공개',  revealType: 'SPECIAL'     },
+    { id: 'GOLDEN',      label: '✨ 황금 열쇠 공개',   revealType: 'GOLDEN'      },
+    { id: 'TRANSPARENT', label: '👻 투명 열쇠 공개',   revealType: 'TRANSPARENT' },
+    { id: 'BOMB',        label: '💣 폭탄 공개',         revealType: 'BOMB'        },
+    { id: 'FINAL',       label: '🏁 최종 결과',         revealType: 'NORMAL'      },
 ];
 
 let G = {};
@@ -91,40 +90,41 @@ function getAdjacent(index) {
     return res;
 }
 
+function getFoundTreasureCount() {
+    let n = 0;
+    for (let i = 0; i < 100; i++) {
+        if (G.revealed[i] && TREASURE_TYPES.has(G.board[i])) n++;
+    }
+    return n;
+}
+
 // ──────────────────────────────────────────
-// 점수 계산 (단계별 누적)
+// 점수 계산
 // ──────────────────────────────────────────
 function calculateScores(upToStageIdx) {
-    const scores = new Array(G.teams.length).fill(0);
+    const scores   = new Array(G.teams.length).fill(0);
     const destroyed = new Set();
 
-    // 기본: 보물 타입만 +1 (함정 제외)
     for (let i = 0; i < 100; i++) {
-        if (G.revealed[i] && TREASURE_TYPES.has(G.board[i])) {
-            scores[G.revealedBy[i]] += 1;
-        }
+        if (G.revealed[i] && TREASURE_TYPES.has(G.board[i])) scores[G.revealedBy[i]] += 1;
     }
     if (upToStageIdx <= 0) return { scores, destroyed };
 
-    // 특수 열쇠: +2 추가 (총 +3)
     for (let i = 0; i < 100; i++) {
         if (G.revealed[i] && G.board[i] === 'SPECIAL') scores[G.revealedBy[i]] += 2;
     }
     if (upToStageIdx <= 1) return { scores, destroyed };
 
-    // 황금 열쇠: +4 추가 (총 +5)
     for (let i = 0; i < 100; i++) {
         if (G.revealed[i] && G.board[i] === 'GOLDEN') scores[G.revealedBy[i]] += 4;
     }
     if (upToStageIdx <= 2) return { scores, destroyed };
 
-    // 투명 열쇠: +9 추가 (총 +10)
     for (let i = 0; i < 100; i++) {
         if (G.revealed[i] && G.board[i] === 'TRANSPARENT') scores[G.revealedBy[i]] += 9;
     }
     if (upToStageIdx <= 3) return { scores, destroyed };
 
-    // 폭탄: 찾은 팀 -6 (기본 +1 취소 + -5점 = 총 -5점) + 주변 열쇠 파괴
     for (let i = 0; i < 100; i++) {
         if (G.revealed[i] && G.board[i] === 'BOMB') {
             scores[G.revealedBy[i]] -= 6;
@@ -160,6 +160,7 @@ function startGame() {
         totalPicks: 0, locked: false,
         skippedTeams: new Set(),
         revealStep: 0,
+        animating: false,
     };
 
     showScreen('game-screen');
@@ -176,7 +177,7 @@ function showScreen(id) {
 }
 
 // ──────────────────────────────────────────
-// 게임 중 렌더링
+// 게임 화면 렌더링
 // ──────────────────────────────────────────
 function renderBoard() {
     const el = document.getElementById('board');
@@ -195,15 +196,14 @@ function renderBoard() {
                 if (G.specialNearby[i]) cell.classList.add('special-nearby');
                 cell.textContent = h > 0 ? h : '';
             } else if (type === 'TRAP') {
-                // 함정: 즉시 공개
                 cell.classList.add('key-trap');
                 cell.textContent = '🪤';
             } else {
-                // 보물: 🎁
                 cell.classList.add('key-treasure');
                 cell.textContent = '🎁';
-                const team = G.teams[G.revealedBy[i]];
-                cell.style.outline = `2px solid ${team.color}`;
+                cell.dataset.teamIdx = G.revealedBy[i];
+                cell.style.setProperty('--team-color', G.teams[G.revealedBy[i]].color);
+                cell.style.outline = `2px solid ${G.teams[G.revealedBy[i]].color}`;
                 cell.style.outlineOffset = '-2px';
             }
         } else {
@@ -232,8 +232,27 @@ function renderScores() {
             <div class="score-treasure">🎁 <span>${team.treasureCount}</span>개</div>
             ${G.skippedTeams.has(i) ? '<div class="skip-badge">다음 턴 패스</div>' : ''}
         `;
+        card.addEventListener('mouseenter', () => highlightTeamCells(i, true));
+        card.addEventListener('mouseleave', () => highlightTeamCells(i, false));
         list.appendChild(card);
     });
+
+    // 남은 보물 표시
+    const found = getFoundTreasureCount();
+    const remaining = TOTAL_TREASURES - found;
+    document.getElementById('remaining-count').textContent = remaining;
+    document.getElementById('remaining-found').textContent  = found;
+}
+
+function highlightTeamCells(teamIdx, on) {
+    document.querySelectorAll('#board .cell[data-team-idx]').forEach(c => {
+        c.classList.remove('team-blink');
+    });
+    if (on) {
+        document.querySelectorAll(`#board .cell[data-team-idx="${teamIdx}"]`).forEach(c => {
+            c.classList.add('team-blink');
+        });
+    }
 }
 
 // ──────────────────────────────────────────
@@ -241,14 +260,15 @@ function renderScores() {
 // ──────────────────────────────────────────
 function showRankingPhase() {
     G.phase = 'ranking';
-    document.getElementById('ranking-phase').style.display   = 'block';
-    document.getElementById('selection-phase').style.display = 'none';
+    document.getElementById('ranking-phase').style.display      = 'block';
+    document.getElementById('selection-phase').style.display    = 'none';
+    document.getElementById('game-complete-phase').style.display = 'none';
     renderRankingInputs();
     renderBoard();
 }
 
 function renderRankingInputs() {
-    const labels = ['🥇 1등', '🥈 2등', '🥉 3등', '4️⃣ 4등'];
+    const labels  = ['🥇 1등', '🥈 2등', '🥉 3등', '4️⃣ 4등'];
     const classes = ['r1', 'r2', 'r3', 'r4'];
     const wrap = document.getElementById('ranking-inputs');
     wrap.innerHTML = '';
@@ -256,17 +276,14 @@ function renderRankingInputs() {
     for (let rank = 0; rank < 4; rank++) {
         const row = document.createElement('div');
         row.className = 'ranking-row';
-
         const lbl = document.createElement('span');
         lbl.className = `rank-label ${classes[rank]}`;
         lbl.textContent = labels[rank];
-
         const sel = document.createElement('select');
         sel.id = `rank-${rank}`;
         sel.innerHTML = `<option value="">선택...</option>` +
             G.teams.map((t, i) => `<option value="${i}">${t.name}</option>`).join('');
         sel.addEventListener('change', autoFill);
-
         row.appendChild(lbl);
         row.appendChild(sel);
         wrap.appendChild(row);
@@ -274,7 +291,7 @@ function renderRankingInputs() {
 }
 
 function autoFill() {
-    const vals = [0, 1, 2, 3].map(i => document.getElementById(`rank-${i}`).value);
+    const vals   = [0, 1, 2, 3].map(i => document.getElementById(`rank-${i}`).value);
     const filled = vals.filter(v => v !== '');
     const unique = new Set(filled);
     if (filled.length === 3 && unique.size === 3) {
@@ -311,6 +328,19 @@ function confirmRanking() {
 }
 
 // ──────────────────────────────────────────
+// 게임 완료 화면 (결과 공개 전 버튼)
+// ──────────────────────────────────────────
+function showGameComplete() {
+    G.phase  = 'complete';
+    G.locked = true;
+    renderBoard();
+    renderScores();
+    document.getElementById('selection-phase').style.display     = 'none';
+    document.getElementById('ranking-phase').style.display       = 'none';
+    document.getElementById('game-complete-phase').style.display = 'flex';
+}
+
+// ──────────────────────────────────────────
 // 칸 선택
 // ──────────────────────────────────────────
 function renderTurnOrder() {
@@ -318,12 +348,10 @@ function renderTurnOrder() {
         G.turnOrder.map((teamIdx, i) => {
             const t = G.teams[teamIdx];
             const done = i < G.turnIdx, active = i === G.turnIdx;
-            const isSkip = active && G.skippedTeams.has(teamIdx);
             return `<div class="turn-item${done?' done':''}${active?' active':''}"
                         ${active ? `style="border-color:${t.color};color:${t.color}"` : ''}>
                 <span class="turn-dot" style="background:${t.color}"></span>
                 ${i+1}. ${t.name}
-                ${isSkip ? '<span style="color:#a855f7;font-size:0.75rem">PASS</span>' : ''}
                 ${done ? '<span class="done-check">✓</span>' : ''}
             </div>`;
         }).join('');
@@ -351,7 +379,6 @@ function renderSkipTeam(teamIdx) {
     `;
 }
 
-// 다음 팀이 패스 대상인지 확인 후 처리
 function showNextTeamOrSkip() {
     const teamIdx = G.turnOrder[G.turnIdx];
     renderTurnOrder();
@@ -385,15 +412,12 @@ function selectCell(index) {
     const resultEl = document.getElementById('last-result');
 
     if (type === 'TRAP') {
-        // 함정: 즉시 공개, 다음 턴 패스
         G.skippedTeams.add(teamIdx);
         resultEl.innerHTML = `<div class="result-trap">🪤 ${team.name}: 함정 발동! 다음 턴 패스!</div>`;
     } else if (type !== null) {
-        // 보물 획득
         team.treasureCount++;
         resultEl.innerHTML = `<div class="result-got">🎁 ${team.name}: 보물 획득!</div>`;
     } else {
-        // 빈 칸: 힌트
         const h = surroundingCount(index);
         G.hints[index] = h;
         G.specialNearby[index] = hasSpecialNearby(index);
@@ -415,7 +439,7 @@ function advanceTurn() {
 
     if (G.turnIdx >= 4) {
         if (G.round >= 15) {
-            startReveal();
+            showGameComplete(); // 자동 공개 대신 버튼으로
         } else {
             G.round++;
             document.getElementById('current-round').textContent = G.round;
@@ -438,47 +462,69 @@ function startReveal() {
 }
 
 function nextRevealStep() {
+    if (G.animating) return;
     G.revealStep++;
+
     if (G.revealStep >= REVEAL_STAGES.length) {
         G = {};
         showScreen('setup-screen');
         return;
     }
-    renderRevealStep();
+
+    const stage = REVEAL_STAGES[G.revealStep];
+
+    if (stage.id === 'TRANSPARENT') {
+        document.getElementById('reveal-next-btn').disabled = true;
+        document.getElementById('reveal-stage-title').textContent = stage.label;
+        playRouletteReveal('TRANSPARENT', G.revealStep - 1, () => {
+            renderRevealStep();
+            document.getElementById('reveal-next-btn').disabled = false;
+        });
+    } else if (stage.id === 'BOMB') {
+        document.getElementById('reveal-next-btn').disabled = true;
+        document.getElementById('reveal-stage-title').textContent = stage.label;
+        playBombReveal(() => {
+            renderRevealStep();
+            document.getElementById('reveal-next-btn').disabled = false;
+        });
+    } else {
+        renderRevealStep();
+    }
 }
 
 function renderRevealStep() {
-    const stage = REVEAL_STAGES[G.revealStep];
+    const stage  = REVEAL_STAGES[G.revealStep];
     const isLast = G.revealStep === REVEAL_STAGES.length - 1;
 
     document.getElementById('reveal-stage-title').textContent = stage.label;
-    document.getElementById('reveal-next-btn').textContent = isLast ? '🔄 다시 시작' : '다음 ▶';
+    document.getElementById('reveal-next-btn').textContent    = isLast ? '🔄 다시 시작' : '다음 ▶';
 
     const { scores, destroyed } = calculateScores(G.revealStep);
-
-    renderRevealBoard(destroyed);
+    renderRevealBoard(destroyed, getRevealedTypes());
     renderRevealScores(scores);
     renderRevealDetail(stage, scores, destroyed);
 }
 
-function getRevealedTypes() {
-    // 함정은 게임 중 즉시 공개 → 항상 🪤 표시 (별도 처리)
-    // 일반 열쇠(NORMAL)는 FINAL 단계에서 공개
+function getRevealedTypesAtStep(step) {
     const types = new Set(['TRAP']);
-    for (let i = 1; i <= G.revealStep && i < REVEAL_STAGES.length; i++) {
+    for (let i = 1; i <= step && i < REVEAL_STAGES.length; i++) {
         if (REVEAL_STAGES[i].revealType) types.add(REVEAL_STAGES[i].revealType);
     }
     return types;
 }
 
-function renderRevealBoard(destroyed) {
+function getRevealedTypes() {
+    return getRevealedTypesAtStep(G.revealStep);
+}
+
+function renderRevealBoard(destroyed, revealedTypes) {
     const el = document.getElementById('reveal-board');
     el.innerHTML = '';
-    const revealedTypes = getRevealedTypes();
 
     for (let i = 0; i < 100; i++) {
         const cell = document.createElement('div');
         cell.className = 'cell';
+        cell.dataset.index = i;
 
         if (!G.revealed[i]) {
             cell.textContent = i + 1;
@@ -491,20 +537,21 @@ function renderRevealBoard(destroyed) {
                 if (G.specialNearby[i]) cell.classList.add('special-nearby');
                 cell.textContent = h > 0 ? h : '';
             } else if (type === 'TRAP') {
-                // 함정은 항상 공개 표시
                 cell.classList.add('key-trap');
                 cell.textContent = '🪤';
             } else if (revealedTypes.has(type)) {
                 const cfg = KEY_CONFIG[type];
                 cell.classList.add(destroyed.has(i) ? 'key-destroyed' : cfg.css);
                 cell.textContent = cfg.emoji;
-                if (!destroyed.has(i) && !['TRANSPARENT'].includes(type)) {
+                if (!destroyed.has(i)) {
                     cell.style.outline = `2px solid ${G.teams[G.revealedBy[i]].color}`;
                     cell.style.outlineOffset = '-2px';
                 }
             } else {
                 cell.classList.add('key-treasure');
                 cell.textContent = '🎁';
+                cell.dataset.teamIdx = G.revealedBy[i];
+                cell.style.setProperty('--team-color', G.teams[G.revealedBy[i]].color);
                 cell.style.outline = `2px solid ${G.teams[G.revealedBy[i]].color}`;
                 cell.style.outlineOffset = '-2px';
             }
@@ -541,8 +588,8 @@ function renderRevealDetail(stage, scores, destroyed) {
     if (stage.id === 'BASE') {
         const total = G.teams.reduce((s, t) => s + t.treasureCount, 0);
         el.innerHTML = `
-            <p>모든 보물에 기본 <strong style="color:#f59e0b">+1점</strong>이 적용됩니다.<br>
-            <span style="color:#475569;font-size:0.8rem">(함정은 점수 없음)</span></p>
+            <p>모든 보물에 기본 <strong style="color:#f59e0b">+1점</strong> 적용<br>
+            <span style="color:#475569;font-size:0.85rem">(함정은 점수 없음)</span></p>
             <div class="detail-row">총 보물 ${total}개 발견</div>
             ${G.teams.map(t => `
                 <div class="detail-row">
@@ -561,13 +608,12 @@ function renderRevealDetail(stage, scores, destroyed) {
         el.innerHTML = sorted.map((t, rank) => `
             <div class="final-row" style="border-left-color:${t.color}">
                 ${medals[rank]} <span style="color:${t.color};font-weight:900">${t.name}</span>
-                <span style="float:right;font-size:1.2rem">${t.score}점</span>
+                <span style="float:right;font-size:1.3rem">${t.score}점</span>
             </div>
         `).join('');
         return;
     }
 
-    // 이 단계 타입을 획득한 팀
     const finders = {};
     for (let i = 0; i < 100; i++) {
         if (G.revealed[i] && G.board[i] === stage.revealType) {
@@ -590,11 +636,9 @@ function renderRevealDetail(stage, scores, destroyed) {
 
         const dmg = {};
         for (const ni of destroyed) {
-            const t = G.board[ni];
             const idx = G.revealedBy[ni];
-            dmg[idx] = (dmg[idx] || 0) + KEY_CONFIG[t].points;
+            dmg[idx] = (dmg[idx] || 0) + KEY_CONFIG[G.board[ni]].points;
         }
-
         const dmgRows = Object.entries(dmg).map(([idx, pts]) => {
             const team = G.teams[idx];
             return `<div class="detail-note">
@@ -620,6 +664,169 @@ function renderRevealDetail(stage, scores, destroyed) {
             ${cfg.emoji} ×${cnt} → <strong>+${inc * cnt}점 추가</strong>
         </div>`;
     }).join('');
+}
+
+// ──────────────────────────────────────────
+// 룰렛 애니메이션
+// ──────────────────────────────────────────
+function buildRouletteSequence(candidates, targets) {
+    const nonTargets = candidates.filter(i => !targets.includes(i));
+    if (nonTargets.length === 0) return [...targets];
+
+    const sh  = shuffle([...nonTargets]);
+    const sh2 = shuffle([...nonTargets]);
+    const seq = [];
+
+    // 빠른 구간 20프레임
+    for (let i = 0; i < 20; i++) seq.push(sh[i % sh.length]);
+    // 중간 구간 12프레임
+    for (let i = 0; i < 12; i++) seq.push(sh2[i % sh2.length]);
+    // 느려지는 구간 6프레임 (후보 줄이기)
+    const small = sh.slice(0, Math.min(4, sh.length));
+    for (let i = 0; i < 6; i++) seq.push(small[i % small.length]);
+    // 직전 2프레임 (비 타겟)
+    for (let i = 0; i < Math.min(2, nonTargets.length); i++) seq.push(nonTargets[i]);
+    // 착지
+    targets.forEach(t => seq.push(t));
+
+    return seq;
+}
+
+function getFrameDelay(frame, total) {
+    const p = frame / total;
+    if (p < 0.45) return 60 + 40 * (p / 0.45);
+    if (p < 0.75) return 100 + 200 * ((p - 0.45) / 0.3);
+    const t = (p - 0.75) / 0.25;
+    return 300 + 350 * t * t;
+}
+
+function playRouletteReveal(targetType, prevStepIdx, onComplete) {
+    G.animating = true;
+    const prevTypes = getRevealedTypesAtStep(prevStepIdx);
+    const { destroyed: prevDestroyed } = calculateScores(prevStepIdx);
+    renderRevealBoard(prevDestroyed, prevTypes);
+
+    const candidates = [], targets = [];
+    for (let i = 0; i < 100; i++) {
+        if (G.revealed[i] && G.board[i] !== null && !prevTypes.has(G.board[i])) {
+            candidates.push(i);
+            if (G.board[i] === targetType) targets.push(i);
+        }
+    }
+
+    if (targets.length === 0 || candidates.length < 2) {
+        G.animating = false;
+        onComplete();
+        return;
+    }
+
+    const seq = buildRouletteSequence(candidates, targets);
+    let frame = 0, prevIdx = null;
+
+    function step() {
+        if (prevIdx !== null) {
+            const e = document.querySelector(`#reveal-board .cell[data-index="${prevIdx}"]`);
+            if (e) e.classList.remove('roulette-flash');
+        }
+
+        if (frame >= seq.length) {
+            // 착지 효과
+            targets.forEach(ti => {
+                const e = document.querySelector(`#reveal-board .cell[data-index="${ti}"]`);
+                if (e) { e.classList.add('roulette-land'); }
+            });
+            setTimeout(() => {
+                G.animating = false;
+                onComplete();
+            }, 1000);
+            return;
+        }
+
+        const idx = seq[frame];
+        prevIdx = idx;
+        const e = document.querySelector(`#reveal-board .cell[data-index="${idx}"]`);
+        if (e) e.classList.add('roulette-flash');
+
+        setTimeout(step, getFrameDelay(frame, seq.length));
+        frame++;
+    }
+
+    step();
+}
+
+function playBombReveal(onComplete) {
+    G.animating = true;
+    const prevStepIdx = G.revealStep - 1;
+    const prevTypes   = getRevealedTypesAtStep(prevStepIdx);
+    const { destroyed: prevDestroyed } = calculateScores(prevStepIdx);
+    renderRevealBoard(prevDestroyed, prevTypes);
+
+    const candidates = [], targets = [];
+    for (let i = 0; i < 100; i++) {
+        if (G.revealed[i] && G.board[i] !== null && !prevTypes.has(G.board[i])) {
+            candidates.push(i);
+            if (G.board[i] === 'BOMB') targets.push(i);
+        }
+    }
+
+    if (targets.length === 0 || candidates.length < 2) {
+        G.animating = false;
+        onComplete();
+        return;
+    }
+
+    const seq = buildRouletteSequence(candidates, targets);
+    let frame = 0, prevIdx = null;
+
+    function step() {
+        if (prevIdx !== null) {
+            const e = document.querySelector(`#reveal-board .cell[data-index="${prevIdx}"]`);
+            if (e) e.classList.remove('roulette-flash');
+        }
+
+        if (frame >= seq.length) {
+            // 폭탄 착지
+            targets.forEach(ti => {
+                const e = document.querySelector(`#reveal-board .cell[data-index="${ti}"]`);
+                if (e) {
+                    e.classList.remove('roulette-flash');
+                    e.classList.add('roulette-land', 'key-bomb');
+                    e.textContent = '💣';
+                }
+            });
+
+            // 800ms 후 연기 효과
+            setTimeout(() => {
+                targets.forEach(ti => {
+                    getAdjacent(ti).forEach(ni => {
+                        const e = document.querySelector(`#reveal-board .cell[data-index="${ni}"]`);
+                        if (e) {
+                            e.className = 'cell smoke-cell';
+                            e.dataset.index = ni;
+                            e.textContent = '💨';
+                        }
+                    });
+                });
+
+                // 2초 후 최종 상태로
+                setTimeout(() => {
+                    G.animating = false;
+                    onComplete();
+                }, 2000);
+            }, 800);
+            return;
+        }
+
+        const idx = seq[frame];
+        prevIdx = idx;
+        const e = document.querySelector(`#reveal-board .cell[data-index="${idx}"]`);
+        if (e) e.classList.add('roulette-flash');
+
+        setTimeout(step, getFrameDelay(frame, seq.length));
+        frame++;
+    }
+
+    step();
 }
 
 function resetGame() {
