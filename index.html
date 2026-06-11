@@ -19,12 +19,10 @@
                 <button id="mode-a-btn" class="mode-btn" onclick="selectMode('A')">
                     <span class="mode-letter">A</span>
                     <span class="mode-name">일반 모드</span>
-                    <span class="mode-desc">보물 위치가 항상 동일</span>
                 </button>
                 <button id="mode-b-btn" class="mode-btn mode-selected" onclick="selectMode('B')">
                     <span class="mode-letter">B</span>
                     <span class="mode-name">스페셜 모드</span>
-                    <span class="mode-desc">매번 위치·개수 변경 가능</span>
                 </button>
             </div>
         </div>
@@ -114,6 +112,7 @@
                 <div id="ranking-inputs"></div>
                 <button class="confirm-btn" onclick="confirmRanking()">✅ 순서 확정</button>
                 <button class="random-btn" onclick="randomRanking()">🎲 랜덤 순서</button>
+                <button id="random-round-btn" class="random-round-btn" onclick="doRandomRound()" style="display:none">⚡ 랜덤 선택</button>
             </div>
 
             <!-- 칸 선택 -->

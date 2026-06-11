@@ -78,6 +78,26 @@ function generateRandomBoard() {
     document.getElementById('generate-status').textContent = `✅ 맵 생성 완료! (보물 ${total}개)`;
 }
 
+function doRandomRound() {
+    if (G.locked || G.animating) return;
+    if (G.phase !== 'ranking' && G.phase !== 'selection') return;
+    if (G.phase === 'ranking') {
+        randomRanking();
+        confirmRanking();
+    }
+    const startRound = G.round;
+    function tryPick() {
+        if (G.round !== startRound || G.phase !== 'selection') return;
+        if (G.locked || G.animating) { setTimeout(tryPick, 150); return; }
+        const avail = [];
+        for (let i = 0; i < 100; i++) { if (!G.revealed[i]) avail.push(i); }
+        if (!avail.length) return;
+        selectCell(avail[Math.floor(Math.random() * avail.length)]);
+        setTimeout(tryPick, 150);
+    }
+    tryPick();
+}
+
 function goHome() {
     if (!confirm('처음 화면으로 돌아갑니다.\n현재 게임 진행 상황이 사라집니다.')) return;
     G = {};
@@ -237,6 +257,8 @@ function startGame() {
     const badge = document.getElementById('mode-badge');
     badge.textContent = G.mode === 'A' ? 'A 일반' : 'B 스페셜';
     badge.className   = `mode-badge mode-${G.mode.toLowerCase()}`;
+    const rrBtn = document.getElementById('random-round-btn');
+    if (rrBtn) rrBtn.style.display = G.mode === 'B' ? 'block' : 'none';
     showRankingPhase();
 }
 
@@ -640,30 +662,28 @@ function renderRevealBoard(destroyed, revealedTypes) {
 // 누적 점수 테이블
 // ──────────────────────────────────────────
 const TABLE_COLS = [
-    { key: 'normal',       label: '🔑일반',   step: 0 },
-    { key: 'special',      label: '🗝️특수',   step: 1 },
-    { key: 'golden',       label: '✨황금',    step: 2 },
-    { key: 'transparent',  label: '👻투명',    step: 3 },
-    { key: 'bomb',         label: '💣폭탄',    step: 4 },
-    { key: 'normalRemain', label: '🔑잔여',    step: 4 },
-    { key: 'final',        label: '최종점수',  step: 5 },
+    { key: 'normal',      label: '🔑일반',   step: 0 },
+    { key: 'special',     label: '🗝️특수',   step: 1 },
+    { key: 'golden',      label: '✨황금',    step: 2 },
+    { key: 'transparent', label: '👻투명',    step: 3 },
+    { key: 'bomb',        label: '💣폭탄',    step: 4 },
+    { key: 'final',       label: '최종점수',  step: 5 },
 ];
 
 function computeTableValues() {
     const n = G.teams.length;
     const v = {
-        normal:       new Array(n).fill(0),
-        special:      new Array(n).fill(0),
-        golden:       new Array(n).fill(0),
-        transparent:  new Array(n).fill(0),
-        bomb:         new Array(n).fill(0),
-        normalRemain: new Array(n).fill(0),
+        normal:      new Array(n).fill(0),
+        special:     new Array(n).fill(0),
+        golden:      new Array(n).fill(0),
+        transparent: new Array(n).fill(0),
+        bomb:        new Array(n).fill(0),
     };
 
     for (let i = 0; i < 100; i++) {
         if (!G.revealed[i] || G.board[i] === null) continue;
         const t = G.board[i], by = G.revealedBy[i];
-        if (t === 'NORMAL')      { v.normal[by] += 1; v.normalRemain[by]++; }
+        if (t === 'NORMAL')      v.normal[by]      += 1;
         if (t === 'SPECIAL')     v.special[by]     += 3;
         if (t === 'GOLDEN')      v.golden[by]       += 5;
         if (t === 'TRANSPARENT') v.transparent[by]  += 10;
@@ -672,14 +692,8 @@ function computeTableValues() {
         if (G.revealed[i] && G.board[i] === 'BOMB') {
             v.bomb[G.revealedBy[i]] -= 5;
             for (const ni of getAdjacent(i)) {
-                if (G.revealed[ni]) {
-                    const t = G.board[ni];
-                    if (t === 'NORMAL') {
-                        v.bomb[G.revealedBy[ni]] -= 1;
-                        v.normalRemain[G.revealedBy[ni]]--;
-                    } else if (['SPECIAL','GOLDEN','TRANSPARENT'].includes(t)) {
-                        v.bomb[G.revealedBy[ni]] -= KEY_CONFIG[t].points;
-                    }
+                if (G.revealed[ni] && ['NORMAL','SPECIAL','GOLDEN','TRANSPARENT'].includes(G.board[ni])) {
+                    v.bomb[G.revealedBy[ni]] -= KEY_CONFIG[G.board[ni]].points;
                 }
             }
         }
@@ -718,28 +732,23 @@ function renderRevealTable() {
             else if (c.key === 'special')      raw = tbl.special[ti];
             else if (c.key === 'golden')       raw = tbl.golden[ti];
             else if (c.key === 'transparent')  raw = tbl.transparent[ti];
-            else if (c.key === 'bomb')         raw = tbl.bomb[ti];
-            else if (c.key === 'normalRemain') raw = tbl.normalRemain[ti];
-            else                               raw = final[ti];
+            else if (c.key === 'bomb') raw = tbl.bomb[ti];
+            else                      raw = final[ti];
 
-            const isFinal        = c.key === 'final';
-            const isNormalRemain = c.key === 'normalRemain';
-            const isWinner       = isFinal && raw === maxScore;
+            const isFinal  = c.key === 'final';
+            const isWinner = isFinal && raw === maxScore;
 
-            let display;
-            if (isFinal)             display = `${medals[rankOf[ti]]} ${raw}점`;
-            else if (isNormalRemain) display = `${raw}개`;
-            else if (raw > 0)        display = `+${raw}`;
-            else                     display = `${raw}`;
+            const display = isFinal  ? `${medals[rankOf[ti]]} ${raw}점`
+                          : raw > 0  ? `+${raw}`
+                          : `${raw}`;
 
-            const color = isFinal        ? team.color
-                        : isNormalRemain ? '#94a3b8'
-                        : raw < 0       ? '#ef4444'
-                        : raw > 0       ? '#4ade80'
+            const color = isFinal ? team.color
+                        : raw < 0 ? '#ef4444'
+                        : raw > 0 ? '#4ade80'
                         : '#475569';
 
             return `<td class="${isNew ? 'col-new' : ''}${isWinner ? ' col-winner' : ''}"
-                       style="color:${color};font-weight:${isFinal ? 900 : isNormalRemain ? 500 : 700}">${display}</td>`;
+                       style="color:${color};font-weight:${isFinal ? 900 : 700}">${display}</td>`;
         }).join('');
 
         return `<tr><td class="tbl-team" style="color:${team.color}">${team.name}</td>${cells}</tr>`;
@@ -748,11 +757,10 @@ function renderRevealTable() {
     document.getElementById('reveal-table-wrap').innerHTML = `
         <table class="reveal-big-table">
             <colgroup>
-                <col style="width:50px">
-                <col style="width:38px"><col style="width:38px">
-                <col style="width:38px"><col style="width:38px">
-                <col style="width:44px"><col style="width:44px">
-                <col style="width:60px">
+                <col style="width:55px">
+                <col style="width:43px"><col style="width:43px">
+                <col style="width:43px"><col style="width:43px">
+                <col style="width:50px"><col style="width:68px">
             </colgroup>
             <thead><tr><th>팀</th>${headerCells}</tr></thead>
             <tbody>${bodyRows}</tbody>
