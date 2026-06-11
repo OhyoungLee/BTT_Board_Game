@@ -560,15 +560,13 @@ function renderRevealStep() {
     const stage  = REVEAL_STAGES[G.revealStep];
     const isLast = G.revealStep === REVEAL_STAGES.length - 1;
 
-    document.getElementById('reveal-stage-title').textContent   = stage.label;
-    document.getElementById('reveal-next-btn').textContent      = isLast ? '🔄 다시 시작' : '다음 ▶';
-    document.getElementById('reveal-prev-btn').disabled         = G.revealStep <= 0;
+    document.getElementById('reveal-stage-title').textContent = stage.label;
+    document.getElementById('reveal-next-btn').textContent    = isLast ? '🔄 다시 시작' : '다음 ▶';
+    document.getElementById('reveal-prev-btn').disabled       = G.revealStep <= 0;
 
-    const { scores, destroyed } = calculateScores(G.revealStep);
+    const { destroyed } = calculateScores(G.revealStep);
     renderRevealBoard(destroyed, getRevealedTypes());
-    renderRevealScores(scores);
-    renderRevealDetail(stage, scores, destroyed);
-    scheduleAutoReveal();
+    renderRevealTable();
 }
 
 function getRevealedTypesAtStep(step) {
@@ -627,136 +625,112 @@ function renderRevealBoard(destroyed, revealedTypes) {
     }
 }
 
-function renderRevealScores(scores) {
-    const sorted = G.teams
-        .map((t, i) => ({ ...t, score: scores[i] }))
-        .sort((a, b) => b.score - a.score);
+// ──────────────────────────────────────────
+// 누적 점수 테이블
+// ──────────────────────────────────────────
+const TABLE_COLS = [
+    { key: 'base',        label: '보물',    step: 0 },
+    { key: 'special',     label: '🗝️특수',  step: 1 },
+    { key: 'golden',      label: '✨황금',   step: 2 },
+    { key: 'transparent', label: '👻투명',   step: 3 },
+    { key: 'bomb',        label: '💣폭탄',   step: 4 },
+    { key: 'final',       label: '최종점수', step: 5 },
+];
 
-    document.getElementById('reveal-scores').innerHTML = `
-        <table class="score-table">
-            <thead><tr><th>팀</th><th>보물</th><th>점수</th></tr></thead>
-            <tbody>
-                ${sorted.map(t => `
-                    <tr>
-                        <td style="color:${t.color};font-weight:800">${t.name}</td>
-                        <td style="color:#64748b">${t.treasureCount}개</td>
-                        <td class="score-val" style="color:${t.color}">${t.score}점</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
+function computeTableValues() {
+    const n = G.teams.length;
+    const v = { base: [], special: [], golden: [], transparent: [], bomb: [] };
+    for (const k of Object.keys(v)) v[k] = new Array(n).fill(0);
+
+    for (let i = 0; i < 100; i++) {
+        if (!G.revealed[i] || G.board[i] === null) continue;
+        const t = G.board[i], by = G.revealedBy[i];
+        if (TREASURE_TYPES.has(t))  v.base[by]++;
+        if (t === 'SPECIAL')        v.special[by]     += 2;
+        if (t === 'GOLDEN')         v.golden[by]       += 4;
+        if (t === 'TRANSPARENT')    v.transparent[by]  += 9;
+    }
+    for (let i = 0; i < 100; i++) {
+        if (G.revealed[i] && G.board[i] === 'BOMB') {
+            v.bomb[G.revealedBy[i]] -= 6;
+            for (const ni of getAdjacent(i)) {
+                if (G.revealed[ni] && ['NORMAL','SPECIAL','GOLDEN','TRANSPARENT'].includes(G.board[ni])) {
+                    v.bomb[G.revealedBy[ni]] -= KEY_CONFIG[G.board[ni]].points;
+                }
+            }
+        }
+    }
+    return v;
 }
 
-function renderRevealDetail(stage, scores, destroyed) {
-    const el = document.getElementById('reveal-detail');
+function renderRevealTable() {
+    const tbl   = computeTableValues();
+    const n     = G.teams.length;
+    const final = G.teams.map((_, i) =>
+        tbl.base[i] + tbl.special[i] + tbl.golden[i] + tbl.transparent[i] + tbl.bomb[i]
+    );
+    const maxScore = Math.max(...final);
 
-    if (stage.id === 'BASE') {
-        const total = G.teams.reduce((s, t) => s + t.treasureCount, 0);
-        el.innerHTML = `
-            <p>모든 보물에 기본 <strong style="color:#f59e0b">+1점</strong> 적용<br>
-            <span style="color:#475569;font-size:0.85rem">(함정은 점수 없음)</span></p>
-            <div class="detail-row">총 보물 ${total}개 발견</div>
-            ${G.teams.map(t => `
-                <div class="detail-row">
-                    <span style="color:${t.color}">${t.name}</span>: 🎁 ×${t.treasureCount} = +${t.treasureCount}점
-                </div>
-            `).join('')}
-        `;
-        return;
-    }
+    // 순위 계산
+    const medals = ['🥇','🥈','🥉','4️⃣'];
+    const sortedIdx = [...Array(n).keys()].sort((a, b) => final[b] - final[a]);
+    const rankOf = new Array(n);
+    sortedIdx.forEach((ti, rank) => { rankOf[ti] = rank; });
 
-    if (stage.id === 'FINAL') {
-        const medals = ['🥇', '🥈', '🥉', '4️⃣'];
-        const sorted = G.teams
-            .map((t, i) => ({ ...t, score: scores[i] }))
-            .sort((a, b) => b.score - a.score);
-
-        el.innerHTML = '<div id="final-rows"></div>';
-        const wrap = document.getElementById('final-rows');
-
-        G.animating = true;
-        document.getElementById('reveal-next-btn').disabled = true;
-        document.getElementById('reveal-prev-btn').disabled = true;
-
-        // 4등부터 역순으로 공개 (1등이 마지막, 가장 극적)
-        for (let rank = sorted.length - 1; rank >= 0; rank--) {
-            const delay = (sorted.length - 1 - rank) * autoDelay(1100);
-            setTimeout(() => {
-                const t = sorted[rank];
-                const row = document.createElement('div');
-                row.className = `final-row final-row-anim${rank === 0 ? ' final-first' : ''}`;
-                row.style.borderLeftColor = t.color;
-                row.style.setProperty('--team-color', t.color);
-                row.innerHTML = `
-                    <span class="final-medal">${medals[rank]}</span>
-                    <span style="color:${t.color};font-weight:900">${t.name}</span>
-                    <span class="final-score" style="color:${t.color}">${t.score}점</span>
-                `;
-                wrap.prepend(row);
-
-                if (rank === 0) {
-                    setTimeout(() => {
-                        G.animating = false;
-                        document.getElementById('reveal-next-btn').disabled = false;
-                        document.getElementById('reveal-prev-btn').disabled = (G.revealStep <= 0);
-                    }, 700);
-                }
-            }, delay);
-        }
-        return;
-    }
-
-    const finders = {};
-    for (let i = 0; i < 100; i++) {
-        if (G.revealed[i] && G.board[i] === stage.revealType) {
-            finders[G.revealedBy[i]] = (finders[G.revealedBy[i]] || 0) + 1;
-        }
-    }
-
-    if (Object.keys(finders).length === 0) {
-        el.innerHTML = `<p>아무도 획득하지 못했습니다.</p>`;
-        return;
-    }
-
-    if (stage.id === 'BOMB') {
-        const finderRows = Object.entries(finders).map(([idx, cnt]) => {
-            const team = G.teams[idx];
-            return `<div class="detail-row">
-                <span style="color:${team.color}">${team.name}</span>: 💣 ×${cnt} → <strong style="color:#ef4444">-5점</strong>
-            </div>`;
-        }).join('');
-
-        const dmg = {};
-        for (const ni of destroyed) {
-            const idx = G.revealedBy[ni];
-            dmg[idx] = (dmg[idx] || 0) + KEY_CONFIG[G.board[ni]].points;
-        }
-        const dmgRows = Object.entries(dmg).map(([idx, pts]) => {
-            const team = G.teams[idx];
-            return `<div class="detail-note">
-                <span style="color:${team.color}">${team.name}</span>: 💥 열쇠 파괴 -${pts}점
-            </div>`;
-        }).join('');
-
-        el.innerHTML = finderRows
-            + (destroyed.size > 0
-                ? `<div class="detail-row">💥 열쇠 <strong>${destroyed.size}개</strong> 파괴!</div>` + dmgRows
-                : '<div class="detail-row" style="color:#475569">폭발 피해 없음</div>');
-        return;
-    }
-
-    const increments = { SPECIAL: 2, GOLDEN: 4, TRANSPARENT: 9 };
-    const inc = increments[stage.revealType] || 0;
-    const cfg = KEY_CONFIG[stage.revealType];
-
-    el.innerHTML = Object.entries(finders).map(([idx, cnt]) => {
-        const team = G.teams[idx];
-        return `<div class="detail-row">
-            <span style="color:${team.color}">${team.name}</span>:
-            ${cfg.emoji} ×${cnt} → <strong>+${inc * cnt}점 추가</strong>
-        </div>`;
+    const headerCells = TABLE_COLS.map(c => {
+        const vis = c.step <= G.revealStep;
+        const isNew = c.step === G.revealStep;
+        return `<th class="${vis ? '' : 'col-hid'}${isNew ? ' col-new-hdr' : ''}">${c.label}</th>`;
     }).join('');
+
+    const bodyRows = G.teams.map((team, ti) => {
+        const cells = TABLE_COLS.map(c => {
+            const vis   = c.step <= G.revealStep;
+            const isNew = c.step === G.revealStep;
+
+            if (!vis) return `<td class="col-hid">—</td>`;
+
+            let raw;
+            if      (c.key === 'base')        raw = tbl.base[ti];
+            else if (c.key === 'special')     raw = tbl.special[ti];
+            else if (c.key === 'golden')      raw = tbl.golden[ti];
+            else if (c.key === 'transparent') raw = tbl.transparent[ti];
+            else if (c.key === 'bomb')        raw = tbl.bomb[ti];
+            else                              raw = final[ti];
+
+            const isBonus = ['special','golden','transparent'].includes(c.key);
+            const isFinal = c.key === 'final';
+            const isWinner = isFinal && raw === maxScore;
+
+            let display;
+            if (isFinal)       display = `${medals[rankOf[ti]]} ${raw}점`;
+            else if (isBonus)  display = raw > 0 ? `+${raw}` : `${raw}`;
+            else               display = `${raw}`;
+
+            const color = isFinal ? team.color
+                        : raw < 0 ? '#ef4444'
+                        : isBonus && raw > 0 ? '#4ade80'
+                        : '#e2e8f0';
+
+            return `<td class="${isNew ? 'col-new' : ''}${isWinner ? ' col-winner' : ''}"
+                       style="color:${color};font-weight:${isFinal ? 900 : 700}">${display}</td>`;
+        }).join('');
+
+        return `<tr><td class="tbl-team" style="color:${team.color}">${team.name}</td>${cells}</tr>`;
+    }).join('');
+
+    document.getElementById('reveal-table-wrap').innerHTML = `
+        <table class="reveal-big-table">
+            <colgroup>
+                <col style="width:58px">
+                <col style="width:42px"><col style="width:48px">
+                <col style="width:48px"><col style="width:48px">
+                <col style="width:48px"><col style="width:72px">
+            </colgroup>
+            <thead><tr><th>팀</th>${headerCells}</tr></thead>
+            <tbody>${bodyRows}</tbody>
+        </table>
+    `;
 }
 
 // ──────────────────────────────────────────
