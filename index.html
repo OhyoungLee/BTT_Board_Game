@@ -18,20 +18,30 @@
             <div class="mode-btns">
                 <button id="mode-a-btn" class="mode-btn" onclick="selectMode('A')">
                     <span class="mode-letter">A</span>
-                    <span class="mode-name">고정 모드</span>
+                    <span class="mode-name">일반 모드</span>
                     <span class="mode-desc">보물 위치가 항상 동일</span>
                 </button>
                 <button id="mode-b-btn" class="mode-btn mode-selected" onclick="selectMode('B')">
                     <span class="mode-letter">B</span>
-                    <span class="mode-name">랜덤 모드</span>
-                    <span class="mode-desc">매번 위치가 바뀜</span>
-                </button>
-                <button id="mode-c-btn" class="mode-btn mode-btn-c" onclick="selectMode('C')">
-                    <span class="mode-letter">C</span>
-                    <span class="mode-name">자동 테스트</span>
-                    <span class="mode-desc">전체 자동 진행</span>
+                    <span class="mode-name">스페셜 모드</span>
+                    <span class="mode-desc">매번 위치·개수 변경 가능</span>
                 </button>
             </div>
+        </div>
+
+        <!-- B모드 보물 개수 설정 -->
+        <div id="mode-b-config" class="mode-b-config">
+            <div class="config-title">보물 개수 설정</div>
+            <div class="count-grid">
+                <div class="count-row"><span>🔑 일반</span><input type="number" id="cnt-normal" value="25" min="0" max="90"></div>
+                <div class="count-row"><span>🗝️ 특수</span><input type="number" id="cnt-special" value="5" min="0" max="30"></div>
+                <div class="count-row"><span>✨ 황금</span><input type="number" id="cnt-golden" value="2" min="0" max="20"></div>
+                <div class="count-row"><span>👻 투명</span><input type="number" id="cnt-transparent" value="2" min="0" max="20"></div>
+                <div class="count-row"><span>🪤 함정</span><input type="number" id="cnt-trap" value="3" min="0" max="20"></div>
+                <div class="count-row"><span>💣 폭탄</span><input type="number" id="cnt-bomb" value="2" min="0" max="10"></div>
+            </div>
+            <button class="gen-btn" onclick="generateRandomBoard()">🎲 랜덤 맵 생성</button>
+            <div id="generate-status" class="gen-status"></div>
         </div>
 
         <div class="setup-box">
@@ -46,9 +56,9 @@
         </div>
         <div class="setup-info">
             <p>100칸 보드 · 15라운드 · 60번 선택</p>
-            <p>🔑 일반 ×25(+1) · 🗝️ 특수 ×5(+3) · ✨ 황금 ×2(+5) · 👻 투명 ×2(+10)</p>
-            <p>🪤 함정 ×3(즉시공개·다음턴패스) · 💣 폭탄 ×2(주변파괴·-5점)</p>
-            <p style="color:#374151">숫자힌트 진한빨간색 = 주변에 특수/폭탄 있음!</p>
+            <p>🔑 일반(+1) · 🗝️ 특수(+3) · ✨ 황금(+5) · 👻 투명(+10)</p>
+            <p>🪤 함정(즉시공개·다음턴패스) · 💣 폭탄(주변파괴·-5점)</p>
+            <p style="color:#374151">A 일반모드: 유령=1·100번 / 폭탄=44·77번 고정</p>
         </div>
     </div>
 </div>
@@ -65,9 +75,12 @@
             <!-- 남은 보물 -->
             <div class="remaining-box">
                 <div class="remaining-label">남은 보물</div>
-                <div class="remaining-val"><span id="remaining-count">36</span> / 36</div>
+                <div class="remaining-val"><span id="remaining-count">36</span> / <span id="remaining-total">36</span></div>
                 <div class="remaining-sub">발견 <span id="remaining-found">0</span>개</div>
             </div>
+
+            <!-- 홈 버튼 -->
+            <button class="home-btn" onclick="goHome()">🏠 처음으로</button>
 
             <!-- 룰 범례 -->
             <div class="game-legend">
@@ -134,10 +147,19 @@
         <div class="reveal-panel">
             <div id="reveal-stage-title" class="reveal-title"></div>
             <div id="reveal-table-wrap"></div>
+            <div class="reveal-legend">
+                <div class="legend-item"><span>🔑 일반</span><span>×25</span><span class="li-pts" style="color:#22c55e">+1점</span></div>
+                <div class="legend-item"><span>🗝️ 특수</span><span>×5</span><span class="li-pts" style="color:#818cf8">+3점</span></div>
+                <div class="legend-item"><span>✨ 황금</span><span>×2</span><span class="li-pts" style="color:#f59e0b">+5점</span></div>
+                <div class="legend-item"><span>👻 투명</span><span>×2</span><span class="li-pts" style="color:#06b6d4">+10점</span></div>
+                <div class="legend-item li-trap"><span>🪤 함정</span><span>×3</span><span class="li-pts">패스</span></div>
+                <div class="legend-item li-bomb"><span>💣 폭탄</span><span>×2</span><span class="li-pts">-5점</span></div>
+            </div>
             <div class="reveal-btn-row">
                 <button id="reveal-prev-btn" class="reveal-prev-btn" onclick="prevRevealStep()">◀ 뒤로</button>
                 <button id="reveal-next-btn" class="reveal-next-btn" onclick="nextRevealStep()">다음 ▶</button>
             </div>
+            <button class="reveal-home-btn" onclick="goHome()">🏠 처음으로</button>
         </div>
     </div>
 </div>

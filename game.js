@@ -27,21 +27,22 @@ const REVEAL_STAGES = [
 ];
 
 let G = {};
-let selectedMode = 'B'; // 'A' = 고정, 'B' = 랜덤
+let selectedMode = 'B'; // 'A' = 일반, 'B' = 스페셜
+let previewBoard  = null;
 
 // ──────────────────────────────────────────
-// A모드 고정 보드 (항상 동일한 위치)
+// A모드 고정 보드 (유령=1,100번 / 폭탄=44,77번)
 // NORMAL×25 SPECIAL×5 GOLDEN×2 TRANSPARENT×2 TRAP×3 BOMB×2 = 39개
 // ──────────────────────────────────────────
 const FIXED_BOARD_A = (() => {
     const board = new Array(100).fill(null);
     const placements = {
-        NORMAL:      [3, 7, 12, 15, 18, 23, 26, 31, 34, 38, 42, 46, 51, 55, 58, 62, 67, 71, 74, 78, 83, 86, 91, 95, 98],
-        SPECIAL:     [9, 30, 53, 76, 97],
-        GOLDEN:      [44, 63],
-        TRANSPARENT: [22, 85],
-        TRAP:        [17, 49, 80],
-        BOMB:        [37, 68],
+        NORMAL:      [3, 7, 12, 17, 22, 26, 31, 37, 41, 46, 48, 50, 55, 59, 60, 65, 68, 70, 75, 79, 80, 84, 86, 90, 94],
+        SPECIAL:     [9, 28, 52, 67, 88],
+        GOLDEN:      [35, 71],
+        TRANSPARENT: [0, 99],
+        TRAP:        [20, 57, 83],
+        BOMB:        [43, 76],
     };
     for (const [type, indices] of Object.entries(placements)) {
         for (const i of indices) board[i] = type;
@@ -53,30 +54,36 @@ function selectMode(mode) {
     selectedMode = mode;
     document.getElementById('mode-a-btn').classList.toggle('mode-selected', mode === 'A');
     document.getElementById('mode-b-btn').classList.toggle('mode-selected', mode === 'B');
-    document.getElementById('mode-c-btn').classList.toggle('mode-selected', mode === 'C');
+    const cfg = document.getElementById('mode-b-config');
+    if (cfg) cfg.style.display = mode === 'B' ? 'block' : 'none';
+    previewBoard = null;
+    document.getElementById('generate-status').textContent = '';
 }
 
-// ── C모드 자동 진행 헬퍼 ──
-function autoDelay(normal) { return G.mode === 'C' ? 150 : normal; }
-
-function scheduleAutoSelect() {
-    if (G.mode !== 'C') return;
-    setTimeout(() => {
-        if (G.phase !== 'selection' || G.locked) return;
-        const avail = [];
-        for (let i = 0; i < 100; i++) { if (!G.revealed[i]) avail.push(i); }
-        if (avail.length) selectCell(avail[Math.floor(Math.random() * avail.length)]);
-    }, 300);
-}
-
-function scheduleAutoReveal() {
-    if (G.mode !== 'C') return;
-    function tryAdvance() {
-        if (G.animating) { setTimeout(tryAdvance, 200); return; }
-        if (!document.getElementById('reveal-screen').classList.contains('active')) return;
-        nextRevealStep();
+function generateRandomBoard() {
+    const counts = {
+        NORMAL:      parseInt(document.getElementById('cnt-normal').value)      || 0,
+        SPECIAL:     parseInt(document.getElementById('cnt-special').value)     || 0,
+        GOLDEN:      parseInt(document.getElementById('cnt-golden').value)      || 0,
+        TRANSPARENT: parseInt(document.getElementById('cnt-transparent').value) || 0,
+        TRAP:        parseInt(document.getElementById('cnt-trap').value)        || 0,
+        BOMB:        parseInt(document.getElementById('cnt-bomb').value)        || 0,
+    };
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    if (total > 100) {
+        document.getElementById('generate-status').textContent = `⚠️ 총 ${total}개 초과 (최대 100)`;
+        return;
     }
-    setTimeout(tryAdvance, 400);
+    previewBoard = generateBoard(counts);
+    document.getElementById('generate-status').textContent = `✅ 맵 생성 완료! (보물 ${total}개)`;
+}
+
+function goHome() {
+    if (!confirm('처음 화면으로 돌아갑니다.\n현재 게임 진행 상황이 사라집니다.')) return;
+    G = {};
+    previewBoard = null;
+    document.getElementById('generate-status').textContent = '';
+    showScreen('setup-screen');
 }
 
 // ──────────────────────────────────────────
@@ -91,12 +98,15 @@ function shuffle(arr) {
     return a;
 }
 
-function generateBoard() {
+function generateBoard(customCounts) {
     const board = new Array(100).fill(null);
     const positions = shuffle([...Array(100).keys()]);
     let idx = 0;
-    for (const [type, cfg] of Object.entries(KEY_CONFIG)) {
-        for (let k = 0; k < cfg.count; k++) board[positions[idx++]] = type;
+    const entries = customCounts
+        ? Object.entries(customCounts)
+        : Object.entries(KEY_CONFIG).map(([t, c]) => [t, c.count]);
+    for (const [type, cnt] of entries) {
+        for (let k = 0; k < cnt; k++) board[positions[idx++]] = type;
     }
     return board;
 }
@@ -153,32 +163,32 @@ function getFoundTreasureCount() {
 // 점수 계산
 // ──────────────────────────────────────────
 function calculateScores(upToStageIdx) {
-    const scores   = new Array(G.teams.length).fill(0);
+    const scores    = new Array(G.teams.length).fill(0);
     const destroyed = new Set();
 
     for (let i = 0; i < 100; i++) {
-        if (G.revealed[i] && TREASURE_TYPES.has(G.board[i])) scores[G.revealedBy[i]] += 1;
+        if (G.revealed[i] && G.board[i] === 'NORMAL') scores[G.revealedBy[i]] += 1;
     }
     if (upToStageIdx <= 0) return { scores, destroyed };
 
     for (let i = 0; i < 100; i++) {
-        if (G.revealed[i] && G.board[i] === 'SPECIAL') scores[G.revealedBy[i]] += 2;
+        if (G.revealed[i] && G.board[i] === 'SPECIAL') scores[G.revealedBy[i]] += 3;
     }
     if (upToStageIdx <= 1) return { scores, destroyed };
 
     for (let i = 0; i < 100; i++) {
-        if (G.revealed[i] && G.board[i] === 'GOLDEN') scores[G.revealedBy[i]] += 4;
+        if (G.revealed[i] && G.board[i] === 'GOLDEN') scores[G.revealedBy[i]] += 5;
     }
     if (upToStageIdx <= 2) return { scores, destroyed };
 
     for (let i = 0; i < 100; i++) {
-        if (G.revealed[i] && G.board[i] === 'TRANSPARENT') scores[G.revealedBy[i]] += 9;
+        if (G.revealed[i] && G.board[i] === 'TRANSPARENT') scores[G.revealedBy[i]] += 10;
     }
     if (upToStageIdx <= 3) return { scores, destroyed };
 
     for (let i = 0; i < 100; i++) {
         if (G.revealed[i] && G.board[i] === 'BOMB') {
-            scores[G.revealedBy[i]] -= 6;
+            scores[G.revealedBy[i]] -= 5;
             for (const ni of getAdjacent(i)) {
                 if (G.revealed[ni] && ['NORMAL', 'SPECIAL', 'GOLDEN', 'TRANSPARENT'].includes(G.board[ni])) {
                     scores[G.revealedBy[ni]] -= KEY_CONFIG[G.board[ni]].points;
@@ -201,7 +211,9 @@ function startGame() {
 
     G = {
         teams: names.map((name, i) => ({ name, color: TEAM_COLORS[i], treasureCount: 0 })),
-        board: selectedMode === 'A' ? [...FIXED_BOARD_A] : generateBoard(),
+        board: selectedMode === 'A' ? [...FIXED_BOARD_A]
+             : previewBoard ? [...previewBoard]
+             : generateBoard(),
         mode: selectedMode,
         revealed:      new Array(100).fill(false),
         revealedBy:    new Array(100).fill(null),
@@ -214,15 +226,17 @@ function startGame() {
         revealStep: 0,
         animating: false,
     };
+    G.totalTreasures = G.board.filter(t => TREASURE_TYPES.has(t)).length;
 
     showScreen('game-screen');
     renderBoard();
     renderScores();
-    document.getElementById('current-round').textContent = G.round;
-    document.getElementById('total-picks').textContent   = G.totalPicks;
+    document.getElementById('current-round').textContent   = G.round;
+    document.getElementById('total-picks').textContent     = G.totalPicks;
+    document.getElementById('remaining-total').textContent = G.totalTreasures;
     const badge = document.getElementById('mode-badge');
-    badge.textContent  = G.mode === 'A' ? 'A 고정' : 'B 랜덤';
-    badge.className    = `mode-badge mode-${G.mode.toLowerCase()}`;
+    badge.textContent = G.mode === 'A' ? 'A 일반' : 'B 스페셜';
+    badge.className   = `mode-badge mode-${G.mode.toLowerCase()}`;
     showRankingPhase();
 }
 
@@ -294,7 +308,7 @@ function renderScores() {
 
     // 남은 보물 표시
     const found = getFoundTreasureCount();
-    const remaining = TOTAL_TREASURES - found;
+    const remaining = G.totalTreasures - found;
     document.getElementById('remaining-count').textContent = remaining;
     document.getElementById('remaining-found').textContent  = found;
 }
@@ -320,7 +334,6 @@ function showRankingPhase() {
     document.getElementById('game-complete-phase').style.display = 'none';
     renderRankingInputs();
     renderBoard();
-    if (G.mode === 'C') setTimeout(() => { randomRanking(); confirmRanking(); }, 200);
 }
 
 function renderRankingInputs() {
@@ -394,7 +407,6 @@ function showGameComplete() {
     document.getElementById('selection-phase').style.display     = 'none';
     document.getElementById('ranking-phase').style.display       = 'none';
     document.getElementById('game-complete-phase').style.display = 'flex';
-    if (G.mode === 'C') setTimeout(startReveal, 400);
 }
 
 // ──────────────────────────────────────────
@@ -446,11 +458,10 @@ function showNextTeamOrSkip() {
         renderSkipTeam(teamIdx);
         document.getElementById('last-result').innerHTML =
             `<div class="result-trap">🪤 ${G.teams[teamIdx].name}: 함정으로 인해 이번 턴 패스!</div>`;
-        setTimeout(advanceTurn, autoDelay(1800));
+        setTimeout(advanceTurn, 1800);
     } else {
         renderCurrentTeam();
         renderBoard();
-        scheduleAutoSelect();
     }
 }
 
@@ -488,7 +499,7 @@ function selectCell(index) {
     const cellEl = document.querySelector(`.cell[data-index="${index}"]`);
     if (cellEl) cellEl.classList.add('pop');
 
-    setTimeout(advanceTurn, autoDelay(2000));
+    setTimeout(advanceTurn, 2000);
 }
 
 function advanceTurn() {
@@ -629,33 +640,46 @@ function renderRevealBoard(destroyed, revealedTypes) {
 // 누적 점수 테이블
 // ──────────────────────────────────────────
 const TABLE_COLS = [
-    { key: 'base',        label: '보물',    step: 0 },
-    { key: 'special',     label: '🗝️특수',  step: 1 },
-    { key: 'golden',      label: '✨황금',   step: 2 },
-    { key: 'transparent', label: '👻투명',   step: 3 },
-    { key: 'bomb',        label: '💣폭탄',   step: 4 },
-    { key: 'final',       label: '최종점수', step: 5 },
+    { key: 'normal',       label: '🔑일반',   step: 0 },
+    { key: 'special',      label: '🗝️특수',   step: 1 },
+    { key: 'golden',       label: '✨황금',    step: 2 },
+    { key: 'transparent',  label: '👻투명',    step: 3 },
+    { key: 'bomb',         label: '💣폭탄',    step: 4 },
+    { key: 'normalRemain', label: '🔑잔여',    step: 4 },
+    { key: 'final',        label: '최종점수',  step: 5 },
 ];
 
 function computeTableValues() {
     const n = G.teams.length;
-    const v = { base: [], special: [], golden: [], transparent: [], bomb: [] };
-    for (const k of Object.keys(v)) v[k] = new Array(n).fill(0);
+    const v = {
+        normal:       new Array(n).fill(0),
+        special:      new Array(n).fill(0),
+        golden:       new Array(n).fill(0),
+        transparent:  new Array(n).fill(0),
+        bomb:         new Array(n).fill(0),
+        normalRemain: new Array(n).fill(0),
+    };
 
     for (let i = 0; i < 100; i++) {
         if (!G.revealed[i] || G.board[i] === null) continue;
         const t = G.board[i], by = G.revealedBy[i];
-        if (TREASURE_TYPES.has(t))  v.base[by]++;
-        if (t === 'SPECIAL')        v.special[by]     += 2;
-        if (t === 'GOLDEN')         v.golden[by]       += 4;
-        if (t === 'TRANSPARENT')    v.transparent[by]  += 9;
+        if (t === 'NORMAL')      { v.normal[by] += 1; v.normalRemain[by]++; }
+        if (t === 'SPECIAL')     v.special[by]     += 3;
+        if (t === 'GOLDEN')      v.golden[by]       += 5;
+        if (t === 'TRANSPARENT') v.transparent[by]  += 10;
     }
     for (let i = 0; i < 100; i++) {
         if (G.revealed[i] && G.board[i] === 'BOMB') {
-            v.bomb[G.revealedBy[i]] -= 6;
+            v.bomb[G.revealedBy[i]] -= 5;
             for (const ni of getAdjacent(i)) {
-                if (G.revealed[ni] && ['NORMAL','SPECIAL','GOLDEN','TRANSPARENT'].includes(G.board[ni])) {
-                    v.bomb[G.revealedBy[ni]] -= KEY_CONFIG[G.board[ni]].points;
+                if (G.revealed[ni]) {
+                    const t = G.board[ni];
+                    if (t === 'NORMAL') {
+                        v.bomb[G.revealedBy[ni]] -= 1;
+                        v.normalRemain[G.revealedBy[ni]]--;
+                    } else if (['SPECIAL','GOLDEN','TRANSPARENT'].includes(t)) {
+                        v.bomb[G.revealedBy[ni]] -= KEY_CONFIG[t].points;
+                    }
                 }
             }
         }
@@ -667,18 +691,17 @@ function renderRevealTable() {
     const tbl   = computeTableValues();
     const n     = G.teams.length;
     const final = G.teams.map((_, i) =>
-        tbl.base[i] + tbl.special[i] + tbl.golden[i] + tbl.transparent[i] + tbl.bomb[i]
+        tbl.normal[i] + tbl.special[i] + tbl.golden[i] + tbl.transparent[i] + tbl.bomb[i]
     );
     const maxScore = Math.max(...final);
 
-    // 순위 계산
     const medals = ['🥇','🥈','🥉','4️⃣'];
     const sortedIdx = [...Array(n).keys()].sort((a, b) => final[b] - final[a]);
     const rankOf = new Array(n);
     sortedIdx.forEach((ti, rank) => { rankOf[ti] = rank; });
 
     const headerCells = TABLE_COLS.map(c => {
-        const vis = c.step <= G.revealStep;
+        const vis   = c.step <= G.revealStep;
         const isNew = c.step === G.revealStep;
         return `<th class="${vis ? '' : 'col-hid'}${isNew ? ' col-new-hdr' : ''}">${c.label}</th>`;
     }).join('');
@@ -691,29 +714,32 @@ function renderRevealTable() {
             if (!vis) return `<td class="col-hid">—</td>`;
 
             let raw;
-            if      (c.key === 'base')        raw = tbl.base[ti];
-            else if (c.key === 'special')     raw = tbl.special[ti];
-            else if (c.key === 'golden')      raw = tbl.golden[ti];
-            else if (c.key === 'transparent') raw = tbl.transparent[ti];
-            else if (c.key === 'bomb')        raw = tbl.bomb[ti];
-            else                              raw = final[ti];
+            if      (c.key === 'normal')       raw = tbl.normal[ti];
+            else if (c.key === 'special')      raw = tbl.special[ti];
+            else if (c.key === 'golden')       raw = tbl.golden[ti];
+            else if (c.key === 'transparent')  raw = tbl.transparent[ti];
+            else if (c.key === 'bomb')         raw = tbl.bomb[ti];
+            else if (c.key === 'normalRemain') raw = tbl.normalRemain[ti];
+            else                               raw = final[ti];
 
-            const isBonus = ['special','golden','transparent'].includes(c.key);
-            const isFinal = c.key === 'final';
-            const isWinner = isFinal && raw === maxScore;
+            const isFinal        = c.key === 'final';
+            const isNormalRemain = c.key === 'normalRemain';
+            const isWinner       = isFinal && raw === maxScore;
 
             let display;
-            if (isFinal)       display = `${medals[rankOf[ti]]} ${raw}점`;
-            else if (isBonus)  display = raw > 0 ? `+${raw}` : `${raw}`;
-            else               display = `${raw}`;
+            if (isFinal)             display = `${medals[rankOf[ti]]} ${raw}점`;
+            else if (isNormalRemain) display = `${raw}개`;
+            else if (raw > 0)        display = `+${raw}`;
+            else                     display = `${raw}`;
 
-            const color = isFinal ? team.color
-                        : raw < 0 ? '#ef4444'
-                        : isBonus && raw > 0 ? '#4ade80'
-                        : '#e2e8f0';
+            const color = isFinal        ? team.color
+                        : isNormalRemain ? '#94a3b8'
+                        : raw < 0       ? '#ef4444'
+                        : raw > 0       ? '#4ade80'
+                        : '#475569';
 
             return `<td class="${isNew ? 'col-new' : ''}${isWinner ? ' col-winner' : ''}"
-                       style="color:${color};font-weight:${isFinal ? 900 : 700}">${display}</td>`;
+                       style="color:${color};font-weight:${isFinal ? 900 : isNormalRemain ? 500 : 700}">${display}</td>`;
         }).join('');
 
         return `<tr><td class="tbl-team" style="color:${team.color}">${team.name}</td>${cells}</tr>`;
@@ -722,10 +748,11 @@ function renderRevealTable() {
     document.getElementById('reveal-table-wrap').innerHTML = `
         <table class="reveal-big-table">
             <colgroup>
-                <col style="width:58px">
-                <col style="width:42px"><col style="width:48px">
-                <col style="width:48px"><col style="width:48px">
-                <col style="width:48px"><col style="width:72px">
+                <col style="width:50px">
+                <col style="width:38px"><col style="width:38px">
+                <col style="width:38px"><col style="width:38px">
+                <col style="width:44px"><col style="width:44px">
+                <col style="width:60px">
             </colgroup>
             <thead><tr><th>팀</th>${headerCells}</tr></thead>
             <tbody>${bodyRows}</tbody>
@@ -760,7 +787,6 @@ function buildRouletteSequence(candidates, targets) {
 }
 
 function getFrameDelay(frame, total) {
-    if (G.mode === 'C') return 20;
     const p = frame / total;
     if (p < 0.45) return 60 + 40 * (p / 0.45);
     if (p < 0.75) return 100 + 200 * ((p - 0.45) / 0.3);
@@ -806,7 +832,7 @@ function playRouletteReveal(targetType, prevStepIdx, onComplete) {
             setTimeout(() => {
                 G.animating = false;
                 onComplete();
-            }, autoDelay(1000));
+            }, 1000);
             return;
         }
 
@@ -880,8 +906,8 @@ function playBombReveal(onComplete) {
                 setTimeout(() => {
                     G.animating = false;
                     onComplete();
-                }, autoDelay(2000));
-            }, autoDelay(800));
+                }, 2000);
+            }, 800);
             return;
         }
 
