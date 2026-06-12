@@ -37,11 +37,11 @@ let previewBoard  = null;
 const FIXED_BOARD_A = (() => {
     const board = new Array(100).fill(null);
     const placements = {
-        NORMAL:      [3, 7, 12, 17, 22, 26, 31, 37, 41, 46, 48, 50, 55, 59, 60, 65, 68, 70, 75, 79, 80, 84, 86, 90, 94],
-        SPECIAL:     [9, 28, 52, 67, 88],
-        GOLDEN:      [35, 71],
+        NORMAL:      [1, 5, 11, 16, 20, 23, 28, 35, 38, 42, 46, 51, 54, 57, 61, 66, 68, 71, 74, 79, 82, 87, 92, 96, 97],
+        SPECIAL:     [14, 33, 58, 72, 91],
+        GOLDEN:      [27, 63],
         TRANSPARENT: [0, 99],
-        TRAP:        [20, 57, 83],
+        TRAP:        [8, 49, 85],
         BOMB:        [43, 76],
     };
     for (const [type, indices] of Object.entries(placements)) {
