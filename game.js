@@ -673,16 +673,18 @@ const TABLE_COLS = [
 function computeTableValues() {
     const n = G.teams.length;
     const v = {
-        normal:      new Array(n).fill(0),
-        special:     new Array(n).fill(0),
-        golden:      new Array(n).fill(0),
-        transparent: new Array(n).fill(0),
-        bomb:        new Array(n).fill(0),
+        normal:        new Array(n).fill(0),  // 일반 열쇠 pts (최종점수 계산용)
+        special:       new Array(n).fill(0),
+        golden:        new Array(n).fill(0),
+        transparent:   new Array(n).fill(0),
+        bomb:          new Array(n).fill(0),
+        totalFound:    new Array(n).fill(0),  // 보물현황과 동일한 전체 발견 수
     };
 
     for (let i = 0; i < 100; i++) {
         if (!G.revealed[i] || G.board[i] === null) continue;
         const t = G.board[i], by = G.revealedBy[i];
+        if (TREASURE_TYPES.has(t)) v.totalFound[by]++;
         if (t === 'NORMAL')      v.normal[by]      += 1;
         if (t === 'SPECIAL')     v.special[by]     += 3;
         if (t === 'GOLDEN')      v.golden[by]       += 5;
@@ -728,7 +730,7 @@ function renderRevealTable() {
             if (!vis) return `<td class="col-hid">—</td>`;
 
             let raw;
-            if      (c.key === 'normal')      raw = tbl.normal[ti];
+            if      (c.key === 'normal')      raw = tbl.totalFound[ti];  // 전체 발견 수 표시
             else if (c.key === 'special')     raw = tbl.special[ti];
             else if (c.key === 'golden')      raw = tbl.golden[ti];
             else if (c.key === 'transparent') raw = tbl.transparent[ti];
