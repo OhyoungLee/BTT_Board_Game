@@ -662,7 +662,7 @@ function renderRevealBoard(destroyed, revealedTypes) {
 // 누적 점수 테이블
 // ──────────────────────────────────────────
 const TABLE_COLS = [
-    { key: 'normal',      label: '🔑일반',   step: 0 },
+    { key: 'normal',      label: '🎁보물',   step: 0 },
     { key: 'special',     label: '🗝️특수',   step: 1 },
     { key: 'golden',      label: '✨황금',    step: 2 },
     { key: 'transparent', label: '👻투명',    step: 3 },
@@ -728,23 +728,27 @@ function renderRevealTable() {
             if (!vis) return `<td class="col-hid">—</td>`;
 
             let raw;
-            if      (c.key === 'normal')       raw = tbl.normal[ti];
-            else if (c.key === 'special')      raw = tbl.special[ti];
-            else if (c.key === 'golden')       raw = tbl.golden[ti];
-            else if (c.key === 'transparent')  raw = tbl.transparent[ti];
-            else if (c.key === 'bomb') raw = tbl.bomb[ti];
-            else                      raw = final[ti];
+            if      (c.key === 'normal')      raw = tbl.normal[ti];
+            else if (c.key === 'special')     raw = tbl.special[ti];
+            else if (c.key === 'golden')      raw = tbl.golden[ti];
+            else if (c.key === 'transparent') raw = tbl.transparent[ti];
+            else if (c.key === 'bomb')        raw = tbl.bomb[ti];
+            else                              raw = final[ti];
 
-            const isFinal  = c.key === 'final';
-            const isWinner = isFinal && raw === maxScore;
+            const isFinal   = c.key === 'final';
+            const isNormal  = c.key === 'normal';
+            const isWinner  = isFinal && raw === maxScore;
 
+            // 보물상자는 개수 표시, 나머지는 점수
             const display = isFinal  ? `${medals[rankOf[ti]]} ${raw}점`
+                          : isNormal ? `${raw}개`
                           : raw > 0  ? `+${raw}`
                           : `${raw}`;
 
-            const color = isFinal ? team.color
-                        : raw < 0 ? '#ef4444'
-                        : raw > 0 ? '#4ade80'
+            const color = isFinal  ? team.color
+                        : isNormal ? '#d97706'
+                        : raw < 0  ? '#ef4444'
+                        : raw > 0  ? '#4ade80'
                         : '#475569';
 
             return `<td class="${isNew ? 'col-new' : ''}${isWinner ? ' col-winner' : ''}"
